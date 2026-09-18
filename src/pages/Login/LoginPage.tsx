@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { login } from '../../store/authSlice';
+import { login, clearBlock } from '../../store/authSlice';
 import { MOCK_USERS } from '../../data/mockUsers';
 import { SecurityBadge } from '../../components/SecurityBadge/SecurityBadge';
 import {
@@ -20,7 +20,7 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
-  const { isAuthenticated, users: storeUsers } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, users: storeUsers, blockedUntil } = useAppSelector((state) => state.auth);
 
   const users = storeUsers || MOCK_USERS;
 
@@ -29,8 +29,7 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  // Bloqueio temporário (10 segundos)
+  
   const [blockTimeLeft, setBlockTimeLeft] = useState(0);
 
   // 2FA State
@@ -38,21 +37,30 @@ export const LoginPage: React.FC = () => {
   const [tempToken, setTempToken] = useState('');
   const [mfaCode, setMfaCode] = useState('');
 
-  // Cronômetro decrescente para desbloqueio
   useEffect(() => {
-    if (blockTimeLeft > 0) {
-      const timer = setTimeout(() => {
-        setBlockTimeLeft((prev) => {
-          if (prev <= 1) {
-            setErrorMessage('');
-            return 0;
+    if (blockedUntil) {
+      if (blockedUntil > Date.now()) {
+        const initialRem = Math.ceil((blockedUntil - Date.now()) / 1000);
+        setBlockTimeLeft(initialRem);
+        const interval = setInterval(() => {
+          const remaining = Math.ceil((blockedUntil - Date.now()) / 1000);
+          if (remaining <= 0) {
+            setBlockTimeLeft(0);
+            dispatch(clearBlock());
+            clearInterval(interval);
+          } else {
+            setBlockTimeLeft(remaining);
           }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearTimeout(timer);
+        }, 1000);
+        return () => clearInterval(interval);
+      } else {
+        setBlockTimeLeft(0);
+        dispatch(clearBlock());
+      }
+    } else {
+      setBlockTimeLeft(0);
     }
-  }, [blockTimeLeft]);
+  }, [blockedUntil, dispatch]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -99,23 +107,16 @@ export const LoginPage: React.FC = () => {
         }
       } else {
         const errorText = await response.text();
-        let errorData: any = { error: 'Credenciais inválidas' };
+        let errorData = { error: 'Erro de autenticação' };
         try {
           errorData = JSON.parse(errorText);
-        } catch (e) {}
-
-        // Se recebeu 429 ou aviso de bloqueio, ativa o timer de 10s
-        if (response.status === 429 || String(errorData.error).includes('Bloqueio')) {
-          const waitTime = errorData.retryAfter || 10;
-          setBlockTimeLeft(waitTime);
-          setErrorMessage(`Muitas tentativas. Bloqueio ativado. Aguarde ${waitTime}s.`);
-          return;
+        } catch (e) {
+          console.error('Resposta não-JSON na API de Login:', errorText);
         }
-
-        setErrorMessage(errorData.error || 'Credenciais inválidas');
+        setErrorMessage(`Bloqueio de Segurança: ${errorData.error}`);
       }
     } catch (err) {
-      setErrorMessage('Erro de conexão com o servidor.');
+      setErrorMessage('Erro Crítico: Falha de conexão com o servidor Fastify.');
     } finally {
       setIsLoading(false);
     }
@@ -123,7 +124,7 @@ export const LoginPage: React.FC = () => {
 
   const handle2FALogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mfaCode || blockTimeLeft > 0) return;
+    if (!mfaCode) return;
     
     setErrorMessage('');
     setIsLoading(true);
@@ -146,16 +147,8 @@ export const LoginPage: React.FC = () => {
           navigate(origin, { replace: true });
         }
       } else {
-        const errorData = await response.json().catch(() => ({ error: 'Código 2FA incorreto.' }));
-        
-        if (response.status === 429 || String(errorData.error).includes('Bloqueio')) {
-          const waitTime = errorData.retryAfter || 10;
-          setBlockTimeLeft(waitTime);
-          setErrorMessage(`Muitas tentativas de 2FA. Bloqueio ativado. Aguarde ${waitTime}s.`);
-          return;
-        }
-
-        setErrorMessage(errorData.error || 'Código 2FA incorreto.');
+        const errorData = await response.json();
+        setErrorMessage(`MFA Erro: ${errorData.error}`);
       }
     } catch (err) {
       setErrorMessage('Erro de conexão ao verificar 2FA.');
@@ -178,7 +171,7 @@ export const LoginPage: React.FC = () => {
       id="login-page-container"
       className="min-h-screen bg-[#050505] text-white flex overflow-hidden font-sans"
     >
-      {/* Left Image Side */}
+      {/* Left Image Side (hidden on very small screens) */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-between p-8 border-r border-[#222]">
         <div className="absolute inset-0 z-0">
           <img src={bgImage} alt="Classified System Server" className="w-full h-full object-cover opacity-60 grayscale" />
@@ -210,12 +203,14 @@ export const LoginPage: React.FC = () => {
 
       {/* Right Form Side */}
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-y-auto max-h-screen">
+        {/* Subtle grid background on the right side */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none opacity-30"></div>
         
         <main className="w-full max-w-[420px] z-10 my-auto">
           <div className="bg-[#0a0a0a] border border-[#222] shadow-2xl relative overflow-hidden">
              <div className="absolute top-0 left-0 w-full h-1 bg-[var(--color-text-muted)] opacity-20"></div>
              
+             {/* Header Title (Mobile only, hidden on Desktop since it's on left panel) */}
             <div className="lg:hidden bg-[#111] border-b border-[#222] p-6 flex flex-col items-center">
               <Shield className="w-8 h-8 text-[var(--color-text-muted)] mb-3" />
               <h1 className="text-[12px] font-bold text-white uppercase tracking-widest">
@@ -258,7 +253,6 @@ export const LoginPage: React.FC = () => {
                         id="mfacode"
                         type="text"
                         required
-                        autoFocus
                         value={mfaCode}
                         onChange={(e) => setMfaCode(e.target.value)}
                         placeholder="Ex: 123456"
@@ -270,20 +264,14 @@ export const LoginPage: React.FC = () => {
                   <button
                     id="mfa-submit-btn"
                     type="submit"
-                    disabled={isLoading || blockTimeLeft > 0}
+                    disabled={isLoading}
                     className="w-full py-3 px-4 bg-[var(--color-text-main)] hover:bg-[var(--color-accent-amber)] text-[var(--color-surface-bg)] text-[10px] font-mono font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
                   >
-                    {isLoading ? (
-                      <span>VERIFICANDO...</span>
-                    ) : blockTimeLeft > 0 ? (
-                      <span>BLOQUEADO ({blockTimeLeft}s)</span>
-                    ) : (
-                      <span>VERIFICAR 2FA</span>
-                    )}
+                    {isLoading ? <span>VERIFICANDO...</span> : <span>VERIFICAR 2FA</span>}
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setRequires2FA(false); setMfaCode(''); setErrorMessage(''); }}
+                    onClick={() => { setRequires2FA(false); setMfaCode(''); }}
                     className="w-full py-2 px-4 bg-transparent border border-[#333] hover:border-[#555] text-[var(--color-text-muted)] text-[10px] font-mono font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
                   >
                     VOLTAR
@@ -333,6 +321,7 @@ export const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Remember Me */}
                 <div className="flex items-center justify-between pt-2 pb-2">
                   <label className="flex items-center gap-2 cursor-pointer select-none group">
                     <div className="relative flex items-center justify-center">
@@ -354,6 +343,7 @@ export const LoginPage: React.FC = () => {
                   </label>
                 </div>
 
+                {/* Submit Button */}
                 <button
                   id="login-submit-btn"
                   type="submit"
@@ -374,6 +364,7 @@ export const LoginPage: React.FC = () => {
               </form>
               )}
 
+              {/* Quick Demo Accounts Selection */}
               <div className="mt-8 pt-6 border-t border-[#222]">
                 <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#555] mb-4 flex items-center gap-2">
                   <Fingerprint className="w-3.5 h-3.5" />
@@ -408,6 +399,7 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
           
+          {/* Footer */}
           <footer className="w-full text-center mt-6">
             <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-[#444]">
               USO EXCLUSIVO PARA OPERADORES CREDENCIADOS

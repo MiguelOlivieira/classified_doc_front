@@ -64,6 +64,9 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.blockedUntil = action.payload;
     },
+    clearBlock: (state) => {
+      state.blockedUntil = undefined;
+    },
     switchUserDirect: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
       state.isAuthenticated = true;
@@ -122,6 +125,7 @@ export const {
   login,
   logout,
   blockUser,
+  clearBlock,
   switchUserDirect,
   updateProfile,
   logSecurityEvent,
@@ -130,4 +134,4 @@ export const {
   registerUser,
 } = authSlice.actions;
 
-export default authSlice.reducer;
+export default authSlice.reducer;2
