@@ -38,8 +38,18 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
     e.preventDefault();
     if (!user || isSubmitting) return;
 
-    if (!titulo || !departamento || !resumo || !conteudo) {
+    if (!titulo || !departamento.trim() || !resumo || !conteudo) {
       setErrorMsg('Campos obrigatórios não preenchidos.');
+      return;
+    }
+
+    if (/\d/.test(departamento)) {
+      setErrorMsg('O campo Departamento Responsável não pode conter números, apenas texto.');
+      return;
+    }
+
+    if (departamento.length > 50) {
+      setErrorMsg('O campo Departamento Responsável não pode exceder 50 caracteres.');
       return;
     }
 
@@ -52,10 +62,10 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
       setErrorMsg('Você não tem autorização para criar documentos com nível superior ao seu.');
       dispatch(
         logSecurityEvent({
-          userId: user.id,
           tipo: 'AVISO',
           mensagem: `Usuário tentou emitir documento com classificação LVL_${nivelAcesso} (Maior que LVL_${user.nivelAcesso})`,
-          recursoId: 'NEW_DOC',
+          documentoCodigo: 'NEW_DOC',
+          nivelTentativa: nivelAcesso,
         })
       );
       return;
@@ -84,6 +94,7 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
           departamento,
           nivelAcesso,
           autor: user.nome,
+          cargoAutor: user.cargo || 'Operador',
           dataCriacao: dataAtual,
           ultimaAtualizacao: dataAtual,
           status: 'ATIVO',
@@ -97,9 +108,10 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
             {
               id: 'hist1',
               usuario: user.nome,
+              cargo: user.cargo || 'Operador',
+              nivel: user.nivelAcesso,
               acao: 'CRIAÇÃO',
               data: dataAtual,
-              departamento: user.departamento,
             },
           ],
         },
@@ -109,17 +121,16 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
 
     dispatch(
       logSecurityEvent({
-        userId: user.id,
-        tipo: 'ACESSO',
-        mensagem: `Documento classificado ${newDocId}-G${nivelAcesso} criado.`,
-        recursoId: newDocId,
+        tipo: 'INFO',
+        mensagem: `Documento classificado ${newDocId}-G${nivelAcesso} criado com sucesso.`,
+        documentoCodigo: `${newDocId}-G${nivelAcesso}`,
       })
     );
 
     setTimeout(() => {
       setIsSubmitting(false);
       onClose();
-    }, 500); // Simulate processing time for defensive UI feedback
+    }, 500);
   };
 
   return (
@@ -235,18 +246,28 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
             />
           </div>
 
-          {/* Department and Pages */}
+          {/* Department and Tags */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-2">
-                Departamento Responsável *
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
+                  Departamento Responsável *
+                </label>
+                <span className="text-[9px] font-mono text-[#666]">
+                  {departamento.length}/50
+                </span>
+              </div>
               <input
                 id="input-doc-dept"
                 type="text"
                 required
+                maxLength={50}
                 value={departamento}
-                onChange={(e) => setDepartamento(e.target.value)}
+                onChange={(e) => {
+                  const textOnly = e.target.value.replace(/[0-9]/g, '').slice(0, 50);
+                  setDepartamento(textOnly);
+                }}
+                placeholder="EX: DEPARTAMENTO DE INTELIGÊNCIA"
                 className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#222] text-white text-[11px] font-mono uppercase focus:outline-none focus:border-[var(--color-accent-amber)] transition-colors"
               />
             </div>
