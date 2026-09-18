@@ -4,7 +4,7 @@ import { registerUser } from '../../store/authSlice';
 import { NivelAcesso } from '../../types/auth';
 import { NIVEIS_INFO } from '../../types/document';
 import { UserPlus, Check, AlertTriangle } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch } from '../../lib/api';
 
 export const UserManagement: React.FC = () => {
   const dispatch = useAppDispatch();

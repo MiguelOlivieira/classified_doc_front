@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, ShieldAlert, CheckCircle, RefreshCw, AlertTriangle, Play } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch } from '../../lib/api';
 
 interface CBStats {
   fires: number;

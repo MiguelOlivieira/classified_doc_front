@@ -5,7 +5,7 @@ import { Lock, ArrowLeft, ShieldAlert, Key } from 'lucide-react';
 import { NivelAcesso } from '../../types/auth';
 import { NIVEIS_INFO } from '../../types/document';
 import { SecurityBadge } from '../../components/SecurityBadge/SecurityBadge';
-import { apiFetch } from '@/lib/api';
+import { apiFetch } from '../../lib/api';
 
 export const AccessDeniedPage: React.FC = () => {
   const navigate = useNavigate();

@@ -6,7 +6,7 @@ import { SecurityHierarchy } from '../../components/SecurityHierarchy/SecurityHi
 import { SecurityBadge } from '../../components/SecurityBadge/SecurityBadge';
 import { User, Mail, Building2, Calendar, ShieldCheck, Download, Trash2, AlertTriangle, CheckCircle2, LockKeyhole, QrCode } from 'lucide-react';
 import { NivelAcesso } from '../../types/auth';
-import { apiFetch } from '@/lib/api';
+import { apiFetch } from '../../lib/api';
 
 export const ProfilePage: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);

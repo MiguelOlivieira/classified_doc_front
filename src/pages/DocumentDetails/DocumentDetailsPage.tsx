@@ -16,7 +16,7 @@ import {
   Download,
   AlertTriangle
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch } from '../../lib/api';
 
 export const DocumentDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
