@@ -42,106 +42,119 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
   const [mfaError, setMfaError] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
 
- const performFetch = async (token?: string) => {
+const performFetch = async (token?: string) => {
     setIsLoading(true);
     setMfaError('');
     try {
       const headers: Record<string, string> = {
-  'x-user-id': user?.username || user?.id || 'anonymous',
-  'x-device-fingerprint': navigator.userAgent,
-  'x-document-level': String(documento.nivelAcesso), // ✅ Resolvido!
-};
+        'x-user-id': user?.username || user?.id || 'anonymous',
+        'x-device-fingerprint': navigator.userAgent,
+        'x-document-level': docLevelInfo?.nome || String(documento.nivelAcesso),
+      };
       
       if (token) {
         headers['x-mfa-token'] = token;
       }
+
+      console.log(`[Sentinela] Solicitando acesso ao documento ${documento.id}...`, headers);
 
       // Chama o backend na Render
       const res = await apiFetch(`/api/documentos/${documento.id}`, { 
         method: 'GET',
         headers 
       });
+
+      console.log(`[Sentinela] Status da resposta:`, res.status);
       
-      // Se a resposta NÃO for 200/OK
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: 'Acesso negado' }));
+      // Se a resposta for 200 OK -> Acesso liberado!
+      if (res.ok) {
+        return true;
+      }
 
-        // 🚨 CASO 1: NÃO CONFIGUROU O 2FA AINDA -> Bloqueia e avisa
-        if (errorData.challenge === 'mfa_setup_required' || res.status === 403 && errorData.error?.includes('configurar o 2FA')) {
-          setShowMfaModal(false);
-          setShowSetupWarning(true);
-          return false;
-        }
+      // Lê a resposta como texto primeiro para nunca estourar erro de parsing
+      const responseText = await res.text();
+      let errorData: any = {};
+      try {
+        errorData = JSON.parse(responseText);
+      } catch (e) {
+        errorData = { error: responseText };
+      }
 
-        // 🚨 CASO 2: PEDE O TOKEN MFA DO APLICATIVO
-        if (errorData.challenge === 'mfa_required' || (res.status === 401 && !token)) {
-          setShowMfaModal(true);
-          return false;
-        }
+      console.log(`[Sentinela] Dados do erro da API:`, errorData);
 
-        // 🚨 CASO 3: TOKEN DIGITADO ESTÁ ERRADO (Ex: digitou 123456 e o celular gerou outro)
-        if (token) {
-          setMfaError(errorData.error || 'Código 2FA inválido. Verifique o código no seu celular.');
-          return false;
-        }
+      // 🚨 CASO 1: NÃO CONFIGUROU O 2FA AINDA -> Exibe o modal de aviso para configurar
+      const isMfaSetupRequired = 
+        errorData.challenge === 'mfa_setup_required' ||
+        (res.status === 403 && String(errorData.error).toLowerCase().includes('configurar'));
 
-        // Bloqueio por outras regras
-        navigate('/acesso-negado', {
-          state: {
-            docId: documento.id,
-            docCodigo: documento.codigo,
-            docTitulo: errorData.error || documento.titulo,
-            nivelExigido: documento.nivelAcesso,
-            nivelUsuario: userNivel,
-          },
-        });
+      if (isMfaSetupRequired) {
+        setShowMfaModal(false);
+        setShowSetupWarning(true);
         return false;
       }
 
-      return true;
+      // 🚨 CASO 2: PEDE O CÓDIGO DO CELULAR (Google Authenticator)
+      const isMfaChallenge = 
+        errorData.challenge === 'mfa_required' || 
+        (res.status === 401 && !token);
+
+      if (isMfaChallenge) {
+        setShowSetupWarning(false);
+        setShowMfaModal(true);
+        return false;
+      }
+
+      // 🚨 CASO 3: DIGITOU O CÓDIGO E ESTAVA ERRADO
+      if (token) {
+        setMfaError(errorData.error || 'Código 2FA incorreto. Tente novamente.');
+        return false;
+      }
+
+      // 🚨 CASO 4: Regra dos Quatro Olhos
+      if (errorData.challenge === 'four_eyes_required') {
+        alert('Este documento exige aprovação prévia de outro administrador (Regra dos Quatro Olhos).');
+        return false;
+      }
+
+      // Bloqueio por outras diretivas de segurança
+      navigate('/acesso-negado', {
+        state: {
+          docId: documento.id,
+          docCodigo: documento.codigo,
+          docTitulo: errorData.error || documento.titulo,
+          nivelExigido: documento.nivelAcesso,
+          nivelUsuario: userNivel,
+        },
+      });
+      return false;
+
     } catch (err) {
-      console.error('Erro de conexão ao validar acesso:', err);
-      setMfaError('Erro de comunicação com o servidor de autenticação.');
-      return false; // 🚨 NUNCA LIBERAR EM CASO DE ERRO!
+      console.error('[Sentinela] Falha de conexão:', err);
+      setMfaError('Erro de comunicação com o servidor.');
+      alert('Erro ao conectar com a API de segurança. Verifique se o backend na Render está online.');
+      return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleOpenDocument = async () => {
-    if (isAccessible) {
-      const success = await performFetch();
-      if (success) {
-        if (user) {
-          dispatch(
-            registrarAcessoDocumento({
-              docId: documento.id,
-              usuario: `${user.username} (${user.nome})`,
-              usuarioId: user.id,
-              cargo: user.cargo,
-              nivel: user.nivelAcesso,
-            })
-          );
-        }
-        navigate(`/documentos/${documento.id}`);
+
+ const handleOpenDocument = async () => {
+    // Se o documento for acessível pelo RBAC OU for de nível crítico que exige challenge no backend
+    const success = await performFetch();
+    if (success) {
+      if (user) {
+        dispatch(
+          registrarAcessoDocumento({
+            docId: documento.id,
+            usuario: `${user.username} (${user.nome})`,
+            usuarioId: user.id,
+            cargo: user.cargo,
+            nivel: user.nivelAcesso,
+          })
+        );
       }
-    } else {
-      dispatch(
-        logSecurityEvent({
-          tipo: 'BLOQUEIO',
-          mensagem: `Tentativa de visualização não autorizada do documento ${documento.codigo} (${docLevelInfo.nome}) por ${user?.username} (Nível ${userNivel}).`,
-          documentoCodigo: documento.codigo,
-          nivelTentativa: userNivel,
-        })
-      );
-      navigate('/acesso-negado', {
-        state: {
-          docCodigo: documento.codigo,
-          docTitulo: documento.titulo,
-          nivelExigido: documento.nivelAcesso,
-          nivelUsuario: userNivel,
-        },
-      });
+      navigate(`/documentos/${documento.id}`);
     }
   };
 
