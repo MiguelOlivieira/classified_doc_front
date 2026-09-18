@@ -30,10 +30,29 @@ export const LoginPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Bloqueio temporário (10 segundos)
+  const [blockTimeLeft, setBlockTimeLeft] = useState(0);
+
   // 2FA State
   const [requires2FA, setRequires2FA] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [mfaCode, setMfaCode] = useState('');
+
+  // Cronômetro decrescente para desbloqueio
+  useEffect(() => {
+    if (blockTimeLeft > 0) {
+      const timer = setTimeout(() => {
+        setBlockTimeLeft((prev) => {
+          if (prev <= 1) {
+            setErrorMessage('');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [blockTimeLeft]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -44,6 +63,7 @@ export const LoginPage: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockTimeLeft > 0) return;
     
     setErrorMessage('');
     setIsLoading(true);
@@ -79,13 +99,20 @@ export const LoginPage: React.FC = () => {
         }
       } else {
         const errorText = await response.text();
-        let errorData = { error: 'Credenciais inválidas' };
+        let errorData: any = { error: 'Credenciais inválidas' };
         try {
           errorData = JSON.parse(errorText);
-        } catch (e) {
-          console.error('Resposta não-JSON na API de Login:', errorText);
+        } catch (e) {}
+
+        // Se recebeu 429 ou aviso de bloqueio, ativa o timer de 10s
+        if (response.status === 429 || String(errorData.error).includes('Bloqueio')) {
+          const waitTime = errorData.retryAfter || 10;
+          setBlockTimeLeft(waitTime);
+          setErrorMessage(`Muitas tentativas. Bloqueio ativado. Aguarde ${waitTime}s.`);
+          return;
         }
-        setErrorMessage(errorData.error);
+
+        setErrorMessage(errorData.error || 'Credenciais inválidas');
       }
     } catch (err) {
       setErrorMessage('Erro de conexão com o servidor.');
@@ -96,7 +123,7 @@ export const LoginPage: React.FC = () => {
 
   const handle2FALogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mfaCode) return;
+    if (!mfaCode || blockTimeLeft > 0) return;
     
     setErrorMessage('');
     setIsLoading(true);
@@ -120,6 +147,14 @@ export const LoginPage: React.FC = () => {
         }
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Código 2FA incorreto.' }));
+        
+        if (response.status === 429 || String(errorData.error).includes('Bloqueio')) {
+          const waitTime = errorData.retryAfter || 10;
+          setBlockTimeLeft(waitTime);
+          setErrorMessage(`Muitas tentativas de 2FA. Bloqueio ativado. Aguarde ${waitTime}s.`);
+          return;
+        }
+
         setErrorMessage(errorData.error || 'Código 2FA incorreto.');
       }
     } catch (err) {
@@ -235,10 +270,16 @@ export const LoginPage: React.FC = () => {
                   <button
                     id="mfa-submit-btn"
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || blockTimeLeft > 0}
                     className="w-full py-3 px-4 bg-[var(--color-text-main)] hover:bg-[var(--color-accent-amber)] text-[var(--color-surface-bg)] text-[10px] font-mono font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
                   >
-                    {isLoading ? <span>VERIFICANDO...</span> : <span>VERIFICAR 2FA</span>}
+                    {isLoading ? (
+                      <span>VERIFICANDO...</span>
+                    ) : blockTimeLeft > 0 ? (
+                      <span>BLOQUEADO ({blockTimeLeft}s)</span>
+                    ) : (
+                      <span>VERIFICAR 2FA</span>
+                    )}
                   </button>
                   <button
                     type="button"
@@ -316,11 +357,13 @@ export const LoginPage: React.FC = () => {
                 <button
                   id="login-submit-btn"
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || blockTimeLeft > 0}
                   className="w-full py-3 px-4 bg-[var(--color-text-main)] hover:bg-[var(--color-accent-amber)] text-[var(--color-surface-bg)] text-[10px] font-mono font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
                 >
                   {isLoading ? (
                     <span>AUTENTICANDO...</span>
+                  ) : blockTimeLeft > 0 ? (
+                    <span>BLOQUEADO ({blockTimeLeft}s)</span>
                   ) : (
                     <>
                       <span>INICIAR SESSÃO</span>
