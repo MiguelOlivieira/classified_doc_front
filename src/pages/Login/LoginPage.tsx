@@ -14,6 +14,7 @@ import {
   Fingerprint,
 } from 'lucide-react';
 import bgImage from '../../assets/images/classified_terminal_bg_1789610478662.jpg';
+import { apiFetch } from '../../lib/api';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -70,7 +71,7 @@ export const LoginPage: React.FC = () => {
     try {
       const cleanUser = username.trim().toLowerCase();
       
-      const response = await fetch('/api/auth/login', {
+      const response = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -121,7 +122,7 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
     try {
       const cleanUser = username.trim().toLowerCase();
-      const response = await fetch('/api/auth/login/2fa', {
+      const response = await apiFetch('/api/auth/login/2fa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

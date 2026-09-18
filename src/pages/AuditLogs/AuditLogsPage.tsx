@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { NivelAcesso } from '../../types/auth';
 import { logSecurityEvent } from '../../store/authSlice';
 import { Activity, ShieldCheck, Eye, PlusCircle } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 export const AuditLogsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export const AuditLogsPage: React.FC = () => {
       );
 
       // Trigger backend honeypot endpoint
-      fetch('/api/auditoria', {
+      apiFetch('/api/auditoria', {
         headers: {
           'x-user-id': user?.id || 'anonymous'
         }

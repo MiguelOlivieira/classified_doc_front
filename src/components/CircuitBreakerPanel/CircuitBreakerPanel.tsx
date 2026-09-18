@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, ShieldAlert, CheckCircle, RefreshCw, AlertTriangle, Play } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 interface CBStats {
   fires: number;
@@ -29,7 +30,7 @@ export const CircuitBreakerPanel: React.FC = () => {
 
   const fetchCBStatus = async () => {
     try {
-      const res = await fetch('/api/system/circuit-breaker');
+      const res = await apiFetch('/api/system/circuit-breaker');
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -51,7 +52,7 @@ export const CircuitBreakerPanel: React.FC = () => {
     if (!data) return;
     setIsToggling(true);
     try {
-      const res = await fetch('/api/system/toggle-abac-instability', {
+      const res = await apiFetch('/api/system/toggle-abac-instability', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ unstable: !data.isUnstable }),
@@ -73,7 +74,7 @@ export const CircuitBreakerPanel: React.FC = () => {
     try {
       // Fazemos uma requisição para carregar o documento "doc-002" que passa pelo Motor ABAC
       // (Não usamos doc-001 porque ele é ULTRASSECRETO e ativa o MFA Step-up Auth)
-      const res = await fetch('/api/documentos/doc-002', {
+      const res = await apiFetch('/api/documentos/doc-002', {
         headers: {
           'x-user-id': 'usr-001', // ID do admin
         }

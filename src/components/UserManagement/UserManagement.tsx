@@ -4,6 +4,7 @@ import { registerUser } from '../../store/authSlice';
 import { NivelAcesso } from '../../types/auth';
 import { NIVEIS_INFO } from '../../types/document';
 import { UserPlus, Check, AlertTriangle } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 export const UserManagement: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -34,7 +35,7 @@ export const UserManagement: React.FC = () => {
 
     try {
       // Create backend request
-      const response = await fetch('/api/auth/register', {
+      const response = await apiFetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

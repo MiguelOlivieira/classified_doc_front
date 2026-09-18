@@ -6,6 +6,7 @@ import { SecurityHierarchy } from '../../components/SecurityHierarchy/SecurityHi
 import { SecurityBadge } from '../../components/SecurityBadge/SecurityBadge';
 import { User, Mail, Building2, Calendar, ShieldCheck, Download, Trash2, AlertTriangle, CheckCircle2, LockKeyhole, QrCode } from 'lucide-react';
 import { NivelAcesso } from '../../types/auth';
+import { apiFetch } from '@/lib/api';
 
 export const ProfilePage: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -51,7 +52,7 @@ export const ProfilePage: React.FC = () => {
   const startMfaSetup = async () => {
     try {
       setMfaError('');
-      const response = await fetch('/api/auth/2fa/generate', {
+      const response = await apiFetch('/api/auth/2fa/generate', {
         method: 'POST',
         headers: { 'x-user-id': user.id || 'usr-002' }
       });
@@ -70,7 +71,7 @@ export const ProfilePage: React.FC = () => {
   const finishMfaSetup = async () => {
     try {
       setMfaError('');
-      const response = await fetch('/api/auth/2fa/enable', {
+      const response = await apiFetch('/api/auth/2fa/enable', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-user-id': user.id || 'usr-002' },
         body: JSON.stringify({ code: mfaCode })

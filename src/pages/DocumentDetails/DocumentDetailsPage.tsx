@@ -16,6 +16,7 @@ import {
   Download,
   AlertTriangle
 } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 export const DocumentDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +36,7 @@ export const DocumentDetailsPage: React.FC = () => {
       
       // Envia evento para o backend
       try {
-        await fetch('/api/documentos/drm-violation', {
+        await apiFetch('/api/documentos/drm-violation', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -117,7 +118,7 @@ export const DocumentDetailsPage: React.FC = () => {
     if (!doc) return;
     setIsDownloading(true);
     try {
-      const res = await fetch(`/api/documentos/${doc.id}/download`, {
+      const res = await apiFetch(`/api/documentos/${doc.id}/download`, {
         headers: {
           'x-user-id': user?.id || 'anonymous'
         }
@@ -236,7 +237,7 @@ ${doc.conteudo}
             <button 
               onClick={() => {
                 const url = new URL(canaryResult.canaryUrl);
-                fetch(url.pathname, { method: 'GET' })
+                apiFetch(url.pathname, { method: 'GET' })
                   .then(() => alert('Ping simulado enviado com sucesso! Verifique a Dashboard de Monitoramento.'))
                   .catch(() => alert('Erro ao simular o ping.'));
               }}

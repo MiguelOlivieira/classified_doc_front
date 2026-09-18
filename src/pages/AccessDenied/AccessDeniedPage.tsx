@@ -5,6 +5,7 @@ import { Lock, ArrowLeft, ShieldAlert, Key } from 'lucide-react';
 import { NivelAcesso } from '../../types/auth';
 import { NIVEIS_INFO } from '../../types/document';
 import { SecurityBadge } from '../../components/SecurityBadge/SecurityBadge';
+import { apiFetch } from '@/lib/api';
 
 export const AccessDeniedPage: React.FC = () => {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ export const AccessDeniedPage: React.FC = () => {
     if (!targetId) return;
     setRequestStatus('loading');
     try {
-      const res = await fetch(`/api/documentos/${targetId}/request-access`, {
+      const res = await apiFetch(`/api/documentos/${targetId}/request-access`, {
         method: 'POST',
         headers: {
           'x-user-id': user?.id || 'anonymous'
@@ -57,7 +58,7 @@ export const AccessDeniedPage: React.FC = () => {
     if (!actionId) return;
     try {
       // Simula a aprovação por um SEGUNDO administrador (ex: usr-002)
-      await fetch(`/api/documentos/approve-access/${actionId}`, {
+      await apiFetch(`/api/documentos/approve-access/${actionId}`, {
         method: 'POST',
         headers: { 'x-user-id': 'usr-002' }
       });
