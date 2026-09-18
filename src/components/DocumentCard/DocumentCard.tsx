@@ -13,6 +13,7 @@ import {
   Star,
   ShieldAlert,
   FileCheck2,
+  QrCode,
 } from 'lucide-react';
 
 interface DocumentCardProps {
@@ -36,6 +37,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
   const userLevelInfo = NIVEIS_INFO[userNivel];
 
   const [showMfaModal, setShowMfaModal] = React.useState(false);
+  const [showSetupWarning, setShowSetupWarning] = React.useState(false);
   const [mfaToken, setMfaToken] = React.useState('');
   const [mfaError, setMfaError] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
@@ -53,7 +55,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
         headers['x-mfa-token'] = token;
       }
 
-      // Usa o apiFetch para bater direto no backend da Render
+      // Requisição para a API na Render
       const res = await apiFetch(`/api/documentos/${documento.id}`, { 
         method: 'GET',
         headers 
@@ -70,13 +72,21 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
           }
         }
 
+        // 🚨 CASO 1: Usuário NÃO tem o 2FA cadastrado/escaneado no perfil
+        if (errorData.challenge === 'mfa_setup_required') {
+          setShowSetupWarning(true);
+          return false;
+        }
+
+        // 🚨 CASO 2: Usuário já tem o 2FA -> Pede o código de 6 dígitos do Google Authenticator
         if (errorData.challenge === 'mfa_required') {
           setShowMfaModal(true);
           return false;
         }
 
+        // Código digitado incorretamente
         if (token) {
-          setMfaError(errorData.error || 'Token MFA inválido. Tente novamente.');
+          setMfaError(errorData.error || 'Código 2FA incorreto. Verifique seu app autenticador.');
           return false;
         }
 
@@ -105,7 +115,6 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
       return true;
     } catch (err) {
       console.error('Erro na requisição de documentos:', err);
-      // Fallback gracioso caso o backend offline permita visualização local
       return isAccessible;
     } finally {
       setIsLoading(false);
@@ -130,7 +139,6 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
         navigate(`/documentos/${documento.id}`);
       }
     } else {
-      // Tentativa bloqueada no nível do cliente
       dispatch(
         logSecurityEvent({
           tipo: 'BLOQUEIO',
@@ -177,27 +185,65 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
     }
   };
 
+  // Modal para quando o 2FA AINDA NÃO FOI CONFIGURADO
+  const setupWarningModal = showSetupWarning && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="bg-[#0f0f0f] border border-[#333] p-6 w-full max-w-sm shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 mb-4 text-[var(--color-accent-amber)]">
+          <QrCode className="w-6 h-6" />
+          <h3 className="font-bold text-sm uppercase tracking-widest text-white">2FA Obrigatório</h3>
+        </div>
+        <p className="text-xs text-[var(--color-text-muted)] mb-4 font-mono leading-relaxed">
+          O documento <strong className="text-white">{documento.codigo}</strong> é de nível crítico ({docLevelInfo.nome}).
+        </p>
+        <div className="p-3 bg-amber-950/20 border-l-2 border-[var(--color-accent-amber)] mb-6 text-[11px] font-mono text-[var(--color-accent-amber)]">
+          Você precisa escanear o QR Code e habilitar o 2FA nas configurações do seu perfil antes de acessar este documento.
+        </div>
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => setShowSetupWarning(false)}
+            className="px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-[var(--color-text-muted)] hover:text-white transition-colors"
+          >
+            Fechar
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSetupWarning(false);
+              navigate('/perfil'); // Leva direto para configurar o 2FA
+            }}
+            className="px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:bg-[var(--color-accent-amber)] transition-colors"
+          >
+            Configurar 2FA
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Modal para digitar o código de 6 dígitos do Google Authenticator
   const mfaModal = showMfaModal && (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="bg-[#0f0f0f] border border-[#333] p-6 w-full max-w-sm shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 mb-4 text-[var(--color-accent-amber)]">
           <ShieldAlert className="w-6 h-6" />
-          <h3 className="font-bold text-sm uppercase tracking-widest text-white">Autenticação Adaptativa</h3>
+          <h3 className="font-bold text-sm uppercase tracking-widest text-white">Step-Up Auth (2FA)</h3>
         </div>
         <p className="text-xs text-[var(--color-text-muted)] mb-6 font-mono leading-relaxed">
-          O servidor interceptou a requisição. O acesso ao documento <strong className="text-white">{documento.codigo}</strong> exige <strong>confirmação de token MFA</strong> em tempo real.
+          O acesso ao documento <strong className="text-white">{documento.codigo}</strong> exige a reconfirmação do <strong>código do seu aplicativo autenticador</strong>.
         </p>
         <form onSubmit={handleMfaSubmit} className="flex flex-col gap-4">
           <div>
             <label className="block text-[10px] font-mono font-bold text-[var(--color-text-muted)] mb-1.5 uppercase tracking-widest">
-              Token MFA (Dica: 123456)
+              CÓDIGO DE 6 DÍGITOS (GOOGLE AUTHENTICATOR)
             </label>
             <input 
               type="text" 
               value={mfaToken}
               onChange={(e) => setMfaToken(e.target.value)}
               className="w-full bg-[#111] border border-[#333] px-3 py-2 text-white focus:outline-none focus:border-[var(--color-accent-amber)] font-mono text-center tracking-widest text-base uppercase"
-              placeholder="123456"
+              placeholder="000000"
               maxLength={6}
               autoFocus
             />
@@ -220,7 +266,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
               disabled={isLoading || !mfaToken}
               className="px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:bg-[var(--color-accent-amber)] transition-colors disabled:opacity-50"
             >
-              {isLoading ? 'Validando...' : 'Confirmar'}
+              {isLoading ? 'Verificando...' : 'Liberar Acesso'}
             </button>
           </div>
         </form>
@@ -315,6 +361,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
             </button>
           )}
           {mfaModal}
+          {setupWarningModal}
         </td>
       </tr>
     );
@@ -462,6 +509,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
         </div>
       </div>
       {mfaModal}
+      {setupWarningModal}
     </div>
   );
 };
