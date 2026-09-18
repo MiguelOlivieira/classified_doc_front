@@ -42,63 +42,50 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
   const [mfaError, setMfaError] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
 
-  const performFetch = async (token?: string) => {
+ const performFetch = async (token?: string) => {
     setIsLoading(true);
     setMfaError('');
     try {
       const headers: Record<string, string> = {
-        'x-user-id': user?.id || 'anonymous',
-        'x-device-fingerprint': navigator.userAgent,
-      };
+  'x-user-id': user?.username || user?.id || 'anonymous',
+  'x-device-fingerprint': navigator.userAgent,
+  'x-document-level': String(documento.nivelAcesso), // ✅ Resolvido!
+};
       
       if (token) {
         headers['x-mfa-token'] = token;
       }
 
-      // Requisição para a API na Render
+      // Chama o backend na Render
       const res = await apiFetch(`/api/documentos/${documento.id}`, { 
         method: 'GET',
         headers 
       });
       
-      if (res.status === 403 || res.status === 401 || res.status === 429) {
-        const errorText = await res.text();
-        let errorData: any = { error: 'Acesso negado' };
-        try {
-          errorData = JSON.parse(errorText);
-        } catch (e) {
-          if (res.status === 401) {
-            errorData = { challenge: 'mfa_required', error: 'Autenticação adaptativa acionada' };
-          }
-        }
+      // Se a resposta NÃO for 200/OK
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Acesso negado' }));
 
-        // 🚨 CASO 1: Usuário NÃO tem o 2FA cadastrado/escaneado no perfil
-        if (errorData.challenge === 'mfa_setup_required') {
+        // 🚨 CASO 1: NÃO CONFIGUROU O 2FA AINDA -> Bloqueia e avisa
+        if (errorData.challenge === 'mfa_setup_required' || res.status === 403 && errorData.error?.includes('configurar o 2FA')) {
+          setShowMfaModal(false);
           setShowSetupWarning(true);
           return false;
         }
 
-        // 🚨 CASO 2: Usuário já tem o 2FA -> Pede o código de 6 dígitos do Google Authenticator
-        if (errorData.challenge === 'mfa_required') {
+        // 🚨 CASO 2: PEDE O TOKEN MFA DO APLICATIVO
+        if (errorData.challenge === 'mfa_required' || (res.status === 401 && !token)) {
           setShowMfaModal(true);
           return false;
         }
 
-        // Código digitado incorretamente
+        // 🚨 CASO 3: TOKEN DIGITADO ESTÁ ERRADO (Ex: digitou 123456 e o celular gerou outro)
         if (token) {
-          setMfaError(errorData.error || 'Código 2FA incorreto. Verifique seu app autenticador.');
+          setMfaError(errorData.error || 'Código 2FA inválido. Verifique o código no seu celular.');
           return false;
         }
 
-        // Bloqueio por regra de segurança/RBAC
-        dispatch(
-          logSecurityEvent({
-            tipo: 'BLOQUEIO',
-            mensagem: `API: ${errorData.error || 'Acesso restrito por diretiva de segurança.'}`,
-            documentoCodigo: documento.codigo,
-            nivelTentativa: userNivel,
-          })
-        );
+        // Bloqueio por outras regras
         navigate('/acesso-negado', {
           state: {
             docId: documento.id,
@@ -106,7 +93,6 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
             docTitulo: errorData.error || documento.titulo,
             nivelExigido: documento.nivelAcesso,
             nivelUsuario: userNivel,
-            challenge: errorData.challenge,
           },
         });
         return false;
@@ -114,8 +100,9 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
 
       return true;
     } catch (err) {
-      console.error('Erro na requisição de documentos:', err);
-      return isAccessible;
+      console.error('Erro de conexão ao validar acesso:', err);
+      setMfaError('Erro de comunicação com o servidor de autenticação.');
+      return false; // 🚨 NUNCA LIBERAR EM CASO DE ERRO!
     } finally {
       setIsLoading(false);
     }
