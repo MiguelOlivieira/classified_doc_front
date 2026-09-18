@@ -47,7 +47,7 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
     e.preventDefault();
     if (!user || isSubmitting) return;
 
-    if (!titulo || !departamento.trim() || !resumo || !conteudo) {
+    if (!titulo.trim() || !departamento.trim() || !resumo.trim() || !conteudo.trim()) {
       setErrorMsg('Campos obrigatórios não preenchidos.');
       return;
     }
@@ -226,15 +226,21 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
 
           {/* Document Title */}
           <div>
-            <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-2">
-              Título do Documento *
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
+                Título do Documento *
+              </label>
+              <span className="text-[9px] font-mono text-[#666]">
+                {titulo.length}/100
+              </span>
+            </div>
             <input
               id="input-doc-titulo"
               type="text"
               required
+              maxLength={100}
               value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
+              onChange={(e) => setTitulo(e.target.value.slice(0, 100))}
               placeholder="EX: PLANO DE RESPOSTA A INCIDENTES Q4"
               className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#222] text-white text-[11px] font-mono uppercase focus:outline-none focus:border-[var(--color-accent-amber)] transition-colors"
             />
@@ -242,14 +248,20 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
 
           {/* Subtitle */}
           <div>
-            <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-2">
-              Subtítulo / Ementa
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
+                Subtítulo / Ementa
+              </label>
+              <span className="text-[9px] font-mono text-[#666]">
+                {subtitulo.length}/150
+              </span>
+            </div>
             <input
               id="input-doc-subtitulo"
               type="text"
+              maxLength={150}
               value={subtitulo}
-              onChange={(e) => setSubtitulo(e.target.value)}
+              onChange={(e) => setSubtitulo(e.target.value.slice(0, 150))}
               placeholder="EX: ANÁLISE DAS MÉTRICAS DE MITIGAÇÃO DO CONSÓRCIO"
               className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#222] text-white text-[11px] font-mono uppercase focus:outline-none focus:border-[var(--color-accent-amber)] transition-colors"
             />
@@ -273,20 +285,20 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
                 maxLength={50}
                 value={departamento}
                 onKeyDown={(e) => {
-                  // Bloqueia teclas numéricas (0 a 9) tanto do teclado alfanumérico quanto do teclado numérico
+                  // Bloqueia digitação direta de 0 a 9
                   if (/^[0-9]$/.test(e.key)) {
                     e.preventDefault();
                   }
                 }}
                 onPaste={(e) => {
-                  // Filtra qualquer número caso cole texto da área de transferência
+                  // Filtra números ao colar
                   e.preventDefault();
                   const pasteData = e.clipboardData.getData('text');
                   const sanitized = (departamento + pasteData.replace(/[0-9]/g, '')).slice(0, 50);
                   setDepartamento(sanitized);
                 }}
                 onChange={(e) => {
-                  // Remove qualquer dígito numérico e restringe a no máximo 50 caracteres
+                  // Remove qualquer número digitado ou colado e restringe a no máximo 50 caracteres
                   const textOnly = e.target.value.replace(/[0-9]/g, '').slice(0, 50);
                   setDepartamento(textOnly);
                 }}
@@ -295,14 +307,20 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
               />
             </div>
             <div>
-              <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-2">
-                Tags / Palavras-chave
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
+                  Tags / Palavras-chave
+                </label>
+                <span className="text-[9px] font-mono text-[#666]">
+                  {tagsInput.length}/100
+                </span>
+              </div>
               <input
                 id="input-doc-tags"
                 type="text"
+                maxLength={100}
                 value={tagsInput}
-                onChange={(e) => setTagsInput(e.target.value)}
+                onChange={(e) => setTagsInput(e.target.value.slice(0, 100))}
                 placeholder="SEPARADAS POR VÍRGULA"
                 className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#222] text-white text-[11px] font-mono uppercase focus:outline-none focus:border-[var(--color-accent-amber)] transition-colors"
               />
@@ -311,15 +329,21 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
 
           {/* Summary */}
           <div>
-            <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-2">
-              Resumo Executivo *
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
+                Resumo Executivo *
+              </label>
+              <span className="text-[9px] font-mono text-[#666]">
+                {resumo.length}/300
+              </span>
+            </div>
             <textarea
               id="input-doc-resumo"
               rows={2}
               required
+              maxLength={300}
               value={resumo}
-              onChange={(e) => setResumo(e.target.value)}
+              onChange={(e) => setResumo(e.target.value.slice(0, 300))}
               placeholder="BREVE SUMÁRIO DOS PONTOS CENTRAIS ABORDADOS..."
               className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#222] text-white text-[11px] font-mono focus:outline-none focus:border-[var(--color-accent-amber)] transition-colors"
             />
@@ -327,15 +351,21 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
 
           {/* Content */}
           <div>
-            <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-2">
-              Conteúdo do Documento (Corpo Principal) *
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
+                Conteúdo do Documento (Corpo Principal) *
+              </label>
+              <span className="text-[9px] font-mono text-[#666]">
+                {conteudo.length}/5000
+              </span>
+            </div>
             <textarea
               id="input-doc-conteudo"
               rows={5}
               required
+              maxLength={5000}
               value={conteudo}
-              onChange={(e) => setConteudo(e.target.value)}
+              onChange={(e) => setConteudo(e.target.value.slice(0, 5000))}
               placeholder="DIGITE AS CLÁUSULAS, PARECERES OU DIRETRIZES..."
               className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#222] text-[#ccc] text-[11px] font-mono focus:outline-none focus:border-[var(--color-accent-amber)] transition-colors whitespace-pre-wrap leading-loose"
             />
