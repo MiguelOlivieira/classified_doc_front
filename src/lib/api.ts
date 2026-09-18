@@ -1,18 +1,25 @@
 // frontend/src/lib/api.ts
 /// <reference types="vite/client" />
-// Pega a URL da nuvem (Vercel) ou usa a porta 3000 localmente (Dev)
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+// frontend/src/lib/api.ts
+
+const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL as string) || '';
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
-  // Garante que a URL base termine sem a barra extra (ex: previne onrender.com//api/login)
   const baseUrl = API_BASE_URL.replace(/\/$/, '');
   
+  const headers: Record<string, string> = {
+    ...((options.headers as Record<string, string>) || {}),
+  };
+
+  // Só adiciona Content-Type: application/json se houver um corpo na requisição
+  // e o Content-Type já não tiver sido explicitamente definido
+  if (options.body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
   });
 
   return response;

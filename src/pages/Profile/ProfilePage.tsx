@@ -53,9 +53,10 @@ export const ProfilePage: React.FC = () => {
     try {
       setMfaError('');
       const response = await apiFetch('/api/auth/2fa/generate', {
-        method: 'POST',
-        headers: { 'x-user-id': user.id || 'usr-002' }
-      });
+  method: 'POST',
+  headers: { 'x-user-id': user.id },
+  body: JSON.stringify({}) // Envia um JSON vazio válido
+});
       if (response.ok) {
         const data = await response.json();
         setQrCodeUrl(data.qrCodeUrl);
