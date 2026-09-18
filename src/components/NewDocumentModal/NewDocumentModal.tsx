@@ -17,7 +17,7 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
 
   const [titulo, setTitulo] = useState('');
   const [subtitulo, setSubtitulo] = useState('');
-  const [departamento, setDepartamento] = useState(user?.departamento || '');
+  const [departamento, setDepartamento] = useState('');
   const [nivelAcesso, setNivelAcesso] = useState<NivelAcesso>(NivelAcesso.PUBLICO);
   const [resumo, setResumo] = useState('');
   const [conteudo, setConteudo] = useState('');
@@ -27,6 +27,15 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Ao abrir o modal, inicializa com o departamento do usuário sanitizado (sem números e max 50)
+  React.useEffect(() => {
+    if (isOpen) {
+      const initialDept = (user?.departamento || '').replace(/[0-9]/g, '').slice(0, 50);
+      setDepartamento(initialDept);
+      setErrorMsg('');
+    }
+  }, [isOpen, user?.departamento]);
 
   if (!isOpen) return null;
 
@@ -263,7 +272,21 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
                 required
                 maxLength={50}
                 value={departamento}
+                onKeyDown={(e) => {
+                  // Bloqueia teclas numéricas (0 a 9) tanto do teclado alfanumérico quanto do teclado numérico
+                  if (/^[0-9]$/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onPaste={(e) => {
+                  // Filtra qualquer número caso cole texto da área de transferência
+                  e.preventDefault();
+                  const pasteData = e.clipboardData.getData('text');
+                  const sanitized = (departamento + pasteData.replace(/[0-9]/g, '')).slice(0, 50);
+                  setDepartamento(sanitized);
+                }}
                 onChange={(e) => {
+                  // Remove qualquer dígito numérico e restringe a no máximo 50 caracteres
                   const textOnly = e.target.value.replace(/[0-9]/g, '').slice(0, 50);
                   setDepartamento(textOnly);
                 }}
