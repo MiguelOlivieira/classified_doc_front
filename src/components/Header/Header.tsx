@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { logout, switchUserDirect, dismissAlert, clearAlerts } from '../../store/authSlice';
 import { SecurityBadge } from '../SecurityBadge/SecurityBadge';
-import { MOCK_USERS } from '../../data/mockUsers';
 import {
   Shield,
   Bell,
@@ -28,23 +27,13 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { user, securityAlerts, users: storeUsers } = useAppSelector((state) => state.auth);
-  const users = storeUsers || MOCK_USERS;
+  const { user, securityAlerts } = useAppSelector((state) => state.auth);
 
-  const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
   const [showAlertsDropdown, setShowAlertsDropdown] = useState(false);
 
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
-  };
-
-  const handleSelectRole = (usernameKey: string) => {
-    const target = users[usernameKey];
-    if (target) {
-      dispatch(switchUserDirect(target.user));
-      setShowRoleSwitcher(false);
-    }
   };
 
   return (
@@ -63,47 +52,9 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-6">
-        {/* Role Switcher (Simulator) */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setShowRoleSwitcher(!showRoleSwitcher);
-              setShowAlertsDropdown(false);
-            }}
-            className="flex items-center gap-2 text-[var(--color-text-muted)] hover:text-white transition-colors border-b border-transparent hover:border-[var(--color-text-muted)] pb-0.5"
-          >
-            <span className="hidden sm:inline">ID_OP:</span>
-            <span className="font-bold text-white">{user?.username}</span>
-            <ChevronDown className="w-3 h-3 ml-1" />
-          </button>
-
-          {showRoleSwitcher && (
-            <div className="absolute right-0 mt-3 w-72 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] shadow-2xl z-50">
-              <div className="px-4 py-2 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-panel)]">
-                <p className="text-[10px] text-[var(--color-text-muted)]">SIMULADOR RBAC ATIVO</p>
-              </div>
-              <div className="py-1">
-                {Object.entries(users).map(([key, demo]) => {
-                  const isSelected = user?.username === demo.user.username;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => handleSelectRole(key)}
-                      className={`w-full text-left px-4 py-2 text-[10px] flex items-center justify-between transition-colors ${isSelected ? 'bg-[var(--color-surface-panel)] text-white' : 'text-[var(--color-text-muted)] hover:bg-[#1a1a1a]'}`}
-                    >
-                      <div>
-                        <p className={`font-bold ${isSelected ? 'text-[var(--color-accent-amber)]' : 'text-white'}`}>
-                          {demo.user.nome}
-                        </p>
-                        <p className="mt-0.5 opacity-60">{demo.user.cargo}</p>
-                      </div>
-                      {isSelected && <Check className="w-3 h-3 text-[var(--color-accent-amber)]" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+        <div className="flex items-center gap-2 text-[var(--color-text-muted)] border-b border-transparent pb-0.5">
+          <span className="hidden sm:inline">ID_OP:</span>
+          <span className="font-bold text-white">{user?.username}</span>
         </div>
 
         {/* Notifications */}
@@ -111,7 +62,6 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={() => {
               setShowAlertsDropdown(!showAlertsDropdown);
-              setShowRoleSwitcher(false);
             }}
             className={`relative flex items-center gap-2 transition-colors pb-0.5 border-b border-transparent ${securityAlerts.length > 0 ? 'text-[var(--color-accent-amber)] hover:border-[var(--color-accent-amber)]' : 'text-[var(--color-text-muted)] hover:text-white hover:border-[var(--color-text-muted)]'}`}
           >

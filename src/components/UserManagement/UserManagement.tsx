@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { registerUser } from '../../store/authSlice';
 import { NivelAcesso } from '../../types/auth';
 import { NIVEIS_INFO } from '../../types/document';
 import { UserPlus, Check, AlertTriangle } from 'lucide-react';
@@ -10,7 +9,7 @@ export const UserManagement: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [nome, setNome] = useState('');
   const [senha, setSenha] = useState('');
   const [cargo, setCargo] = useState('');
@@ -27,7 +26,7 @@ export const UserManagement: React.FC = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !nome || !senha || !cargo || isSubmitting) return;
+    if (!email || !nome || !senha || !cargo || isSubmitting) return;
 
     setIsSubmitting(true);
     setErrorMsg('');
@@ -42,9 +41,9 @@ export const UserManagement: React.FC = () => {
           'x-user-id': user.id // Mock admin token/header
         },
         body: JSON.stringify({
-          username: username.toLowerCase().replace(/\s/g, ''),
+          username: email.split('@')[0].toLowerCase().replace(/\s/g, ''),
           nome,
-          email: `${username.toLowerCase().replace(/\s/g, '')}@classified.corp`,
+          email: email.toLowerCase().replace(/\s/g, ''),
           password: senha,
           cargo,
           departamento: departamento || 'Departamento Geral',
@@ -58,31 +57,10 @@ export const UserManagement: React.FC = () => {
         throw new Error(data.error || 'Erro ao registrar usuário na rede estrutural.');
       }
 
-      // Update Redux state to simulate the account being added to our mock store
-      const demoAccount = {
-        user: {
-          id: `usr-${Date.now()}`,
-          username: data.user.username,
-          nome,
-          cargo,
-          departamento: departamento || 'Departamento Geral',
-          nivelAcesso,
-          email: `${data.user.username}@classified.corp`,
-          dataCriacao: new Date().toISOString().split('T')[0],
-          ultimoAcesso: 'Nunca',
-          status: 'ATIVO' as const,
-        },
-        senhaOriginal: senha,
-        descricao: `Adicionado pelo Admin (${NIVEIS_INFO[nivelAcesso].nome})`,
-      };
-
-      dispatch(registerUser({
-        username: demoAccount.user.username,
-        demoAccount
-      }));
+      // Removido mock de atualizar store local com demoAccount
 
       setSuccess(data.message || 'OPERADOR REGISTRADO COM SUCESSO.');
-      setUsername('');
+      setEmail('');
       setNome('');
       setSenha('');
       setCargo('');
@@ -144,15 +122,15 @@ export const UserManagement: React.FC = () => {
             </div>
             <div>
               <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-[#888] mb-1.5">
-                ID DE ACESSO (LOGIN) *
+                E-MAIL DE ACESSO *
               </label>
               <input
-                type="text"
+                type="email"
                 required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-3 py-2 bg-[#111] border border-[#333] text-white text-[10px] font-mono focus:outline-none focus:border-[var(--color-text-main)] transition-colors"
-                placeholder="ID.USUARIO"
+                placeholder="usuario@exemplo.com"
               />
             </div>
             <div>

@@ -1,7 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Documento } from '../types/document';
 import { NivelAcesso } from '../types/auth';
-import { INITIAL_DOCUMENTS } from '../data/mockDocuments';
 
 interface DocumentState {
   documents: Documento[];
@@ -17,12 +16,9 @@ interface DocumentState {
 }
 
 const initialState: DocumentState = {
-  documents: INITIAL_DOCUMENTS,
-  favoritos: ['doc-001', 'doc-003'],
-  documentosRecentesPorUsuario: {
-    // Inicialização mock para manter compatibilidade, assumindo que alguns já viram algo
-    'usr-001': ['doc-001', 'doc-002', 'doc-003', 'doc-004'],
-  },
+  documents: [],
+  favoritos: [],
+  documentosRecentesPorUsuario: {},
   searchTerm: '',
   selectedClassification: 'TODOS',
   selectedDepartment: 'TODOS',
@@ -154,7 +150,7 @@ const documentSlice = createSlice({
       });
     },
     resetarDocumentosPadrao: (state) => {
-      state.documents = INITIAL_DOCUMENTS;
+      state.documents = [];
     },
   },
 });

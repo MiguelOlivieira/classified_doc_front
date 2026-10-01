@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { login, clearBlock } from '../../store/authSlice';
-import { MOCK_USERS } from '../../data/mockUsers';
 import { SecurityBadge } from '../../components/SecurityBadge/SecurityBadge';
 import {
   Shield,
@@ -16,13 +15,21 @@ import {
 import bgImage from '../../assets/images/classified_terminal_bg_1789610478662.jpg';
 import { apiFetch } from '../../lib/api';
 
+const getRoleLevel = (role?: string) => {
+  if (!role) return 1;
+  const r = role.toUpperCase();
+  if (r === 'GESTOR' || r === 'ADMIN') return 5;
+  if (r === 'OPERADOR') return 4;
+  if (r === 'ANALISTA') return 3;
+  if (r === 'USUARIO') return 2;
+  return 1;
+};
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
-  const { isAuthenticated, users: storeUsers, blockedUntil } = useAppSelector((state) => state.auth);
-
-  const users = storeUsers || MOCK_USERS;
+  const { isAuthenticated, blockedUntil } = useAppSelector((state) => state.auth);
 
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin123');
@@ -78,12 +85,13 @@ export const LoginPage: React.FC = () => {
 
     try {
       const cleanUser = username.trim().toLowerCase();
+      const loginEmail = cleanUser.includes('@') ? cleanUser : `${cleanUser}@sentinela.gov`;
       
       const response = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          email: `${cleanUser}@sentinela.gov`, 
+          email: loginEmail, 
           password: password,
           fingerprint: navigator.userAgent
         })
@@ -99,11 +107,32 @@ export const LoginPage: React.FC = () => {
           return;
         }
 
-        const account = users[cleanUser];
-        if (account) {
-          dispatch(login({ user: account.user, rememberMe }));
-          const origin = (location.state as any)?.from?.pathname || '/dashboard';
-          navigate(origin, { replace: true });
+        if (responseData.user) {
+          const u = responseData.user;
+          dispatch(login({ 
+            user: {
+              ...u,
+              nivelAcesso: u.nivelAcesso || getRoleLevel(u.role),
+              cargo: u.cargo || u.role || 'USUARIO'
+            }, 
+            rememberMe 
+          }));
+          navigate('/dashboard', { replace: true });
+        } else {
+          // Fallback for when backend doesn't send user object
+          dispatch(login({ 
+            user: { 
+              id: responseData.userId || 'usr-new', 
+              username: cleanUser, 
+              nome: cleanUser, 
+              email: loginEmail, 
+              role: responseData.role || 'USUARIO', 
+              cargo: responseData.role || 'USUARIO',
+              nivelAcesso: getRoleLevel(responseData.role)
+            }, 
+            rememberMe 
+          }));
+          navigate('/dashboard', { replace: true });
         }
       } else {
         const errorText = await response.text();
@@ -140,12 +169,32 @@ export const LoginPage: React.FC = () => {
       });
 
       if (response.ok) {
-        const account = users[cleanUser];
-        if (account) {
-          dispatch(login({ user: account.user, rememberMe }));
-          const origin = (location.state as any)?.from?.pathname || '/dashboard';
-          navigate(origin, { replace: true });
+        const responseData = await response.json();
+        if (responseData.user) {
+          const u = responseData.user;
+          dispatch(login({ 
+            user: {
+              ...u,
+              nivelAcesso: u.nivelAcesso || getRoleLevel(u.role),
+              cargo: u.cargo || u.role || 'USUARIO'
+            }, 
+            rememberMe 
+          }));
+        } else {
+          dispatch(login({ 
+            user: { 
+              id: responseData.userId || 'usr-new', 
+              username: cleanUser, 
+              nome: cleanUser, 
+              email: `${cleanUser}@sentinela.gov`, 
+              role: responseData.role || 'USUARIO', 
+              cargo: responseData.role || 'USUARIO',
+              nivelAcesso: getRoleLevel(responseData.role)
+            }, 
+            rememberMe 
+          }));
         }
+        navigate('/dashboard', { replace: true });
       } else {
         const errorData = await response.json();
         setErrorMessage(`MFA Erro: ${errorData.error}`);
@@ -154,15 +203,6 @@ export const LoginPage: React.FC = () => {
       setErrorMessage('Erro de conexão ao verificar 2FA.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleFillDemo = (userKey: string) => {
-    const demo = users[userKey];
-    if (demo) {
-      setUsername(demo.user.username);
-      setPassword(demo.senhaOriginal);
-      setErrorMessage('');
     }
   };
 
@@ -364,38 +404,6 @@ export const LoginPage: React.FC = () => {
               </form>
               )}
 
-              {/* Quick Demo Accounts Selection */}
-              <div className="mt-8 pt-6 border-t border-[#222]">
-                <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#555] mb-4 flex items-center gap-2">
-                  <Fingerprint className="w-3.5 h-3.5" />
-                  OPERADORES_DE_TESTE
-                </p>
-                <div className="flex flex-col gap-2">
-                  {Object.entries(users).map(([key, demo]) => (
-                    <button
-                      key={key}
-                      id={`demo-user-btn-${key}`}
-                      type="button"
-                      onClick={() => handleFillDemo(key)}
-                      className={`px-4 py-3 border text-left flex items-center justify-between transition-colors ${
-                        username === demo.user.username
-                          ? 'bg-[#111] border-[var(--color-accent-amber)]'
-                          : 'bg-[#0a0a0a] border-[#222] hover:border-[#444]'
-                      }`}
-                    >
-                      <div className="flex flex-col">
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${username === demo.user.username ? 'text-[var(--color-accent-amber)]' : 'text-white'}`}>
-                          {demo.user.nome}
-                        </span>
-                        <span className="text-[9px] text-[#555] font-mono uppercase mt-1">
-                          ID: {demo.user.username} | LVL_{demo.user.nivelAcesso}
-                        </span>
-                      </div>
-                      <SecurityBadge nivel={demo.user.nivelAcesso} size="xs" showLevel={false} />
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
           

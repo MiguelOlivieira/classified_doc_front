@@ -1,15 +1,10 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { AuthState, User, SecurityAlert, NivelAcesso, DemoAccount } from '../types/auth';
-import { MOCK_USERS } from '../data/mockUsers';
-
-// Inicia com o usuário Administrador por padrão para uma experiência rica imediata,
-// mas totalmente navegável e comutável entre os níveis de acesso
-const defaultUser = MOCK_USERS.admin.user;
 
 const initialState: AuthState = {
-  user: defaultUser,
-  users: MOCK_USERS,
-  isAuthenticated: true,
+  user: null,
+  users: {} as any, // keeping for backwards compatibility if needed, but not used for auth anymore
+  isAuthenticated: false,
   rememberMe: true,
   lastLoginTime: new Date().toISOString(),
   securityAlerts: [
@@ -109,15 +104,6 @@ const authSlice = createSlice({
     clearAlerts: (state) => {
       state.securityAlerts = [];
     },
-    registerUser: (state, action: PayloadAction<{ username: string; demoAccount: DemoAccount }>) => {
-      state.users[action.payload.username] = action.payload.demoAccount;
-      state.securityAlerts.unshift({
-        id: `alt-${Date.now()}`,
-        timestamp: 'Agora',
-        tipo: 'AUDITORIA',
-        mensagem: `Novo usuário registrado: ${action.payload.demoAccount.user.nome} (${action.payload.demoAccount.user.cargo}).`,
-      });
-    },
   },
 });
 
@@ -131,7 +117,6 @@ export const {
   logSecurityEvent,
   dismissAlert,
   clearAlerts,
-  registerUser,
 } = authSlice.actions;
 
 export default authSlice.reducer;2
