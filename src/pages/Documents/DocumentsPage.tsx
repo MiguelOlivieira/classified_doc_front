@@ -5,11 +5,13 @@ import {
   setSearchTerm,
   setSelectedClassification,
   setSelectedDepartment,
+  setDocuments,
 } from '../../store/documentSlice';
+import { apiFetch } from '../../lib/api';
 import { DocumentCard } from '../../components/DocumentCard/DocumentCard';
 import { NivelAcesso } from '../../types/auth';
 import { podeAcessar } from '../../types/document';
-import { Search, Filter, FileText } from 'lucide-react';
+import { Search, Filter, FileText, RefreshCw } from 'lucide-react';
 
 export const DocumentsPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -77,16 +79,71 @@ export const DocumentsPage: React.FC = () => {
     selectedDepartment,
   ]);
 
+  const fetchDocuments = async () => {
+    try {
+      const res = await apiFetch('/api/documentos', {
+        headers: { 'x-user-id': user?.id || '', 'x-user-role': user?.cargo || '' }
+      });
+      const data = await res.json();
+      if (data.status === 'Success' && data.documents) {
+        const nivelMap: Record<string, number> = {
+          'PUBLICO': 1, 'INTERNO': 2, 'CONFIDENCIAL': 3,
+          'SECRETO': 4, 'ULTRASSECRETO': 5,
+          '1': 1, '2': 2, '3': 3, '4': 4, '5': 5,
+        };
+        const docsMapped = data.documents.map((d: any) => {
+          const nivel = nivelMap[String(d.nivelAcesso).toUpperCase()] || 1;
+          const createdDate = d.createdAt ? new Date(d.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+          return {
+            id: d.id,
+            codigo: `${d.id}-G${nivel}`,
+            titulo: d.titulo || 'Sem Título',
+            subtitulo: '',
+            departamento: d.departamento || 'GERAL',
+            nivelAcesso: nivel,
+            autor: 'SISTEMA',
+            cargoAutor: 'GESTOR',
+            dataCriacao: createdDate,
+            ultimaAtualizacao: createdDate,
+            status: 'ATIVO',
+            tags: [],
+            resumo: d.titulo || '',
+            conteudo: 'Acesse o documento para visualizar o conteúdo criptografado.',
+            contemDadosSensiveis: false,
+            paginas: 1,
+            historicoAcesso: []
+          };
+        });
+        dispatch(setDocuments(docsMapped));
+      }
+    } catch (e) {
+      console.error('Failed to fetch documents', e);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchDocuments();
+  }, [user]);
+
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-6rem)]">
       <div className="flex flex-col gap-4 border-b border-[var(--color-surface-border)] pb-4 shrink-0">
-        <div>
-          <h1 className="text-xl font-bold uppercase tracking-widest text-white">
-            BANCO_DE_DADOS_CLASSIFICADO
-          </h1>
-          <p className="text-[11px] font-mono text-[var(--color-text-muted)] uppercase mt-1">
-            Consulte registros classificados de acordo com seu nível de autorização.
-          </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-xl font-bold uppercase tracking-widest text-white">
+              BANCO_DE_DADOS_CLASSIFICADO
+            </h1>
+            <p className="text-[11px] font-mono text-[var(--color-text-muted)] uppercase mt-1">
+              Consulte registros classificados de acordo com seu nível de autorização.
+            </p>
+          </div>
+          <button 
+            onClick={fetchDocuments}
+            className="flex items-center gap-2 px-3 py-2 bg-[#111] border border-[var(--color-surface-border)] hover:bg-[#222] text-white text-[10px] uppercase font-mono transition-colors"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Sincronizar DB
+          </button>
         </div>
 
         {/* Filters Row */}
