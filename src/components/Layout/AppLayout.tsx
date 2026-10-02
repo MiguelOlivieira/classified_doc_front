@@ -22,26 +22,37 @@ export const AppLayout: React.FC = () => {
         .then(res => res.json())
         .then(data => {
           if (data.status === 'Success' && data.documents) {
+            // Mapa para converter strings de nível para o enum numérico
+            const nivelMap: Record<string, number> = {
+              'PUBLICO': 1, 'INTERNO': 2, 'CONFIDENCIAL': 3,
+              'SECRETO': 4, 'ULTRASSECRETO': 5,
+              '1': 1, '2': 2, '3': 3, '4': 4, '5': 5,
+            };
+
             // A API retorna do banco dados mais simples, então mapeamos para a tipagem do frontend
-            const docsMapped = data.documents.map((d: any) => ({
-              id: d.id,
-              codigo: `${d.id}-G${d.nivelAcesso}`,
-              titulo: d.titulo,
-              subtitulo: '',
-              departamento: d.departamento || 'GERAL',
-              nivelAcesso: Number(d.nivelAcesso) || 1,
-              autor: 'SISTEMA',
-              cargoAutor: 'GESTOR',
-              dataCriacao: new Date(d.createdAt).toISOString().split('T')[0],
-              ultimaAtualizacao: new Date(d.createdAt).toISOString().split('T')[0],
-              status: 'ATIVO',
-              tags: [],
-              resumo: d.titulo,
-              conteudo: 'Acesse o documento para visualizar o conteúdo criptografado.',
-              contemDadosSensiveis: false,
-              paginas: 1,
-              historicoAcesso: []
-            }));
+            const docsMapped = data.documents.map((d: any) => {
+              const nivel = nivelMap[String(d.nivelAcesso).toUpperCase()] || 1;
+              const createdDate = d.createdAt ? new Date(d.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+              return {
+                id: d.id,
+                codigo: `${d.id}-G${nivel}`,
+                titulo: d.titulo,
+                subtitulo: '',
+                departamento: d.departamento || 'GERAL',
+                nivelAcesso: nivel,
+                autor: 'SISTEMA',
+                cargoAutor: 'GESTOR',
+                dataCriacao: createdDate,
+                ultimaAtualizacao: createdDate,
+                status: 'ATIVO',
+                tags: [],
+                resumo: d.titulo,
+                conteudo: 'Acesse o documento para visualizar o conteúdo criptografado.',
+                contemDadosSensiveis: false,
+                paginas: 1,
+                historicoAcesso: []
+              };
+            });
             dispatch(setDocuments(docsMapped));
           }
         })
