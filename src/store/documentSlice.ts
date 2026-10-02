@@ -31,6 +31,9 @@ const documentSlice = createSlice({
   name: 'documents',
   initialState,
   reducers: {
+    setDocuments: (state, action: PayloadAction<Documento[]>) => {
+      state.documents = action.payload;
+    },
     setSearchTerm: (state, action: PayloadAction<string>) => {
       state.searchTerm = action.payload;
     },
@@ -156,6 +159,7 @@ const documentSlice = createSlice({
 });
 
 export const {
+  setDocuments,
   setSearchTerm,
   setSelectedClassification,
   setSelectedDepartment,

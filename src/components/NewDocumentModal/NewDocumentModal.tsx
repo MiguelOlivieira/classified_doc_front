@@ -5,6 +5,7 @@ import { logSecurityEvent } from '../../store/authSlice';
 import { NivelAcesso } from '../../types/auth';
 import { NIVEIS_INFO } from '../../types/document';
 import { X, FilePlus2, Check, AlertTriangle } from 'lucide-react';
+import { apiFetch } from '../../lib/api';
 
 interface NewDocumentModalProps {
   isOpen: boolean;
@@ -93,53 +94,77 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
     const newDocId = generateId();
     const dataAtual = new Date().toISOString().split('T')[0];
 
-    dispatch(
-      criarDocumento({
-        documento: {
-          id: newDocId,
-          codigo: `${newDocId}-G${nivelAcesso}`,
-          titulo,
-          subtitulo,
-          departamento,
-          nivelAcesso,
-          autor: user.nome,
-          cargoAutor: user.cargo || 'Operador',
-          dataCriacao: dataAtual,
-          ultimaAtualizacao: dataAtual,
-          status: 'ATIVO',
-          tags,
-          resumo,
-          conteudo,
-          contemDadosSensiveis,
-          paginas: Math.max(1, Math.ceil(conteudo.length / 1500)),
-          protocoloSeguranca: `PROT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-          historicoAcesso: [
-            {
-              id: 'hist1',
-              usuario: user.nome,
-              cargo: user.cargo || 'Operador',
-              nivel: user.nivelAcesso,
-              acao: 'CRIAÇÃO',
-              data: dataAtual,
-            },
-          ],
+    const novoDocumento = {
+      id: newDocId,
+      codigo: `${newDocId}-G${nivelAcesso}`,
+      titulo,
+      subtitulo,
+      departamento,
+      nivelAcesso,
+      autor: user.nome,
+      cargoAutor: user.cargo || 'Operador',
+      dataCriacao: dataAtual,
+      ultimaAtualizacao: dataAtual,
+      status: 'ATIVO' as const,
+      tags,
+      resumo,
+      conteudo,
+      contemDadosSensiveis,
+      paginas: Math.max(1, Math.ceil(conteudo.length / 1500)),
+      protocoloSeguranca: `PROT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+      historicoAcesso: [
+        {
+          id: 'hist1',
+          usuario: user.nome,
+          cargo: user.cargo || 'Operador',
+          nivel: user.nivelAcesso,
+          acao: 'CRIAÇÃO',
+          data: dataAtual,
         },
-        usuarioId: user.id
-      })
-    );
+      ],
+    };
 
-    dispatch(
-      logSecurityEvent({
-        tipo: 'INFO',
-        mensagem: `Documento classificado ${newDocId}-G${nivelAcesso} criado com sucesso.`,
-        documentoCodigo: `${newDocId}-G${nivelAcesso}`,
-      })
-    );
+    try {
+      // 1. Enviar para o Back-End Real
+      const response = await apiFetch('/api/documents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id
+        },
+        body: JSON.stringify({ documento: novoDocumento })
+      });
 
-    setTimeout(() => {
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao salvar documento no servidor.');
+      }
+
+      // 2. Atualizar estado local (Redux)
+      dispatch(
+        criarDocumento({
+          documento: novoDocumento,
+          usuarioId: user.id
+        })
+      );
+
+      dispatch(
+        logSecurityEvent({
+          tipo: 'INFO',
+          mensagem: `Documento classificado ${newDocId}-G${nivelAcesso} criado com sucesso.`,
+          documentoCodigo: `${newDocId}-G${nivelAcesso}`,
+        })
+      );
+
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onClose();
+      }, 500);
+
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Falha de comunicação com a rede estrutural.');
       setIsSubmitting(false);
-      onClose();
-    }, 500);
+    }
   };
 
   return (
