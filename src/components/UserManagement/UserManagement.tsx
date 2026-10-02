@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { NivelAcesso } from '../../types/auth';
 import { NIVEIS_INFO } from '../../types/document';
-import { UserPlus, Check, AlertTriangle } from 'lucide-react';
+import { UserPlus, Check, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
 export const UserManagement: React.FC = () => {
@@ -18,6 +18,7 @@ export const UserManagement: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Só admin ou Nível 5 (Ultrassecreto) pode cadastrar usuários
   if (!user || user.nivelAcesso < NivelAcesso.ULTRASSECRETO) {
@@ -128,7 +129,7 @@ export const UserManagement: React.FC = () => {
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value.toLowerCase().replace(/\s/g, ''))}
                 className="w-full px-3 py-2 bg-[#111] border border-[#333] text-white text-[10px] font-mono focus:outline-none focus:border-[var(--color-text-main)] transition-colors"
                 placeholder="usuario@exemplo.com"
               />
@@ -137,14 +138,24 @@ export const UserManagement: React.FC = () => {
               <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-[#888] mb-1.5">
                 SENHA INICIAL *
               </label>
-              <input
-                type="password"
-                required
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                className="w-full px-3 py-2 bg-[#111] border border-[#333] text-white text-[10px] font-mono focus:outline-none focus:border-[var(--color-text-main)] transition-colors"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#111] border border-[#333] text-white text-[10px] font-mono focus:outline-none focus:border-[var(--color-text-main)] transition-colors pr-10"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888] hover:text-[var(--color-text-main)] transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-[#888] mb-1.5">
