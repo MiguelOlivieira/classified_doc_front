@@ -126,7 +126,7 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
 
     try {
       // 1. Enviar para o Back-End Real
-      const response = await apiFetch('/api/documents', {
+      const response = await apiFetch('/api/documentos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

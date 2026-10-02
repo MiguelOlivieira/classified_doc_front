@@ -119,4 +119,4 @@ export const {
   clearAlerts,
 } = authSlice.actions;
 
-export default authSlice.reducer;2
+export default authSlice.reducer;
