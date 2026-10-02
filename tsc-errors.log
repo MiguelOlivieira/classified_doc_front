@@ -1,0 +1,37 @@
+src/App.tsx(6,1): error TS6133: 'React' is declared but its value is never read.
+src/components/DocumentCard/DocumentCard.tsx(8,1): error TS6133: 'logSecurityEvent' is declared but its value is never read.
+src/components/Header/Header.tsx(4,18): error TS6133: 'switchUserDirect' is declared but its value is never read.
+src/components/Header/Header.tsx(4,36): error TS6133: 'dismissAlert' is declared but its value is never read.
+src/components/Header/Header.tsx(5,1): error TS6133: 'SecurityBadge' is declared but its value is never read.
+src/components/Header/Header.tsx(7,3): error TS6133: 'Shield' is declared but its value is never read.
+src/components/Header/Header.tsx(10,3): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/components/Header/Header.tsx(15,3): error TS6133: 'Check' is declared but its value is never read.
+src/components/InactivityTimeout/InactivityTimeout.tsx(18,20): error TS2503: Cannot find namespace 'NodeJS'.
+src/components/InactivityTimeout/InactivityTimeout.tsx(19,20): error TS2503: Cannot find namespace 'NodeJS'.
+src/components/Layout/AppLayout.tsx(20,62): error TS2339: Property 'role' does not exist on type 'User'.
+src/components/NewDocumentModal/NewDocumentModal.tsx(129,24): error TS1308: 'await' expressions are only allowed within async functions and at the top levels of modules.
+src/components/NewDocumentModal/NewDocumentModal.tsx(139,27): error TS1308: 'await' expressions are only allowed within async functions and at the top levels of modules.
+src/components/SecurityHierarchy/SecurityHierarchy.tsx(4,38): error TS6133: 'ArrowDown' is declared but its value is never read.
+src/components/SecurityRoute/SecurityRoute.tsx(1,17): error TS6133: 'useEffect' is declared but its value is never read.
+src/components/SecurityRoute/SecurityRoute.tsx(6,1): error TS6133: 'logSecurityEvent' is declared but its value is never read.
+src/components/SecurityRoute/SecurityRoute.tsx(14,9): error TS6133: 'location' is declared but its value is never read.
+src/components/SecurityRoute/SecurityRoute.tsx(15,9): error TS6133: 'dispatch' is declared but its value is never read.
+src/components/UserManagement/UserManagement.tsx(4,1): error TS6133: 'NIVEIS_INFO' is declared but its value is never read.
+src/components/UserManagement/UserManagement.tsx(9,9): error TS6133: 'dispatch' is declared but its value is never read.
+src/pages/AccessDenied/AccessDeniedPage.tsx(6,1): error TS6133: 'NIVEIS_INFO' is declared but its value is never read.
+src/pages/Dashboard/DashboardPage.tsx(13,3): error TS6133: 'BarChart3' is declared but its value is never read.
+src/pages/Dashboard/DashboardPage.tsx(28,9): error TS6133: 'userLevel' is declared but its value is never read.
+src/pages/DocumentDetails/DocumentDetailsPage.tsx(10,3): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/DocumentDetails/DocumentDetailsPage.tsx(11,3): error TS6133: 'User' is declared but its value is never read.
+src/pages/DocumentDetails/DocumentDetailsPage.tsx(12,3): error TS6133: 'Building2' is declared but its value is never read.
+src/pages/DocumentDetails/DocumentDetailsPage.tsx(13,3): error TS6133: 'FileText' is declared but its value is never read.
+src/pages/Documents/DocumentsPage.tsx(12,18): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/Login/LoginPage.tsx(5,1): error TS6133: 'SecurityBadge' is declared but its value is never read.
+src/pages/Login/LoginPage.tsx(13,3): error TS6133: 'Fingerprint' is declared but its value is never read.
+src/pages/Login/LoginPage.tsx(129,15): error TS2353: Object literal may only specify known properties, and 'role' does not exist in type 'User'.
+src/pages/Login/LoginPage.tsx(190,15): error TS2353: Object literal may only specify known properties, and 'role' does not exist in type 'User'.
+src/pages/Profile/ProfilePage.tsx(7,33): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/Profile/ProfilePage.tsx(8,1): error TS6133: 'NivelAcesso' is declared but its value is never read.
+src/pages/Profile/ProfilePage.tsx(22,10): error TS6133: 'mfaSecret' is declared but its value is never read.
+src/store/authSlice.ts(2,27): error TS6133: 'SecurityAlert' is declared but its value is never read.
+src/store/authSlice.ts(2,55): error TS6133: 'DemoAccount' is declared but its value is never read.

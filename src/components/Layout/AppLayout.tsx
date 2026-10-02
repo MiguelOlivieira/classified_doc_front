@@ -17,7 +17,7 @@ export const AppLayout: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated && user) {
       apiFetch('/api/documents', {
-        headers: { 'x-user-id': user.id, 'x-user-role': user.role }
+        headers: { 'x-user-id': user.id, 'x-user-role': user.cargo }
       })
         .then(res => res.json())
         .then(data => {

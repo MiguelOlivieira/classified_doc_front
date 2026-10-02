@@ -44,7 +44,7 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
     return 'DOC' + Math.floor(Math.random() * 9000 + 1000).toString();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || isSubmitting) return;
 

@@ -126,9 +126,12 @@ export const LoginPage: React.FC = () => {
               username: cleanUser, 
               nome: cleanUser, 
               email: loginEmail, 
-              role: responseData.role || 'USUARIO', 
               cargo: responseData.role || 'USUARIO',
-              nivelAcesso: getRoleLevel(responseData.role)
+              nivelAcesso: getRoleLevel(responseData.role),
+              departamento: 'GERAL',
+              dataCriacao: new Date().toISOString(),
+              ultimoAcesso: new Date().toISOString(),
+              status: 'ATIVO'
             }, 
             rememberMe 
           }));
@@ -187,9 +190,12 @@ export const LoginPage: React.FC = () => {
               username: cleanUser, 
               nome: cleanUser, 
               email: `${cleanUser}@sentinela.gov`, 
-              role: responseData.role || 'USUARIO', 
               cargo: responseData.role || 'USUARIO',
-              nivelAcesso: getRoleLevel(responseData.role)
+              nivelAcesso: getRoleLevel(responseData.role),
+              departamento: 'GERAL',
+              dataCriacao: new Date().toISOString(),
+              ultimoAcesso: new Date().toISOString(),
+              status: 'ATIVO'
             }, 
             rememberMe 
           }));

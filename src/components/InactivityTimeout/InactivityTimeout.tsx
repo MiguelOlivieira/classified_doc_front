@@ -15,8 +15,8 @@ export const InactivityTimeout: React.FC = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    let timeoutId: NodeJS.Timeout;
-    let warningId: NodeJS.Timeout;
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let warningId: ReturnType<typeof setTimeout>;
 
     const resetTimer = () => {
       clearTimeout(timeoutId);
