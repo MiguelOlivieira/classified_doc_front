@@ -11,16 +11,22 @@ import { InactivityTimeout } from '../InactivityTimeout/InactivityTimeout';
 export const AppLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNewDocModalOpen, setIsNewDocModalOpen] = useState(false);
+  const [debugMsg, setDebugMsg] = useState('INIT_APPLAYOUT');
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
 
   useEffect(() => {
     if (isAuthenticated && user) {
+      setDebugMsg('FETCH_STARTED');
       apiFetch('/api/documentos', {
         headers: { 'x-user-id': user.id, 'x-user-role': user.cargo }
       })
-        .then(res => res.json())
+        .then(res => {
+          setDebugMsg(`FETCH_RES_${res.status}`);
+          return res.json();
+        })
         .then(data => {
+          setDebugMsg(`FETCH_DATA_DOCS_${data.documents?.length}`);
           if (data.status === 'Success' && data.documents) {
             // Mapa para converter strings de nível para o enum numérico
             const nivelMap: Record<string, number> = {
@@ -71,6 +77,7 @@ export const AppLayout: React.FC = () => {
           }
         })
         .catch((e) => {
+          setDebugMsg(`FETCH_CATCH_${e.message.replace(/ /g, '_')}`);
           apiFetch('/api/documentos/frontend-log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -90,6 +97,11 @@ export const AppLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-bg)] text-[var(--color-text-main)] flex flex-col font-sans">
+      {/* GLOBAL DEBUG BANNER */}
+      <div className="fixed bottom-0 right-0 z-[9999] bg-yellow-600 text-black font-mono text-xs px-2 py-1 uppercase pointer-events-none font-bold">
+        APP_LAYOUT_DEBUG: {debugMsg}
+      </div>
+
       <InactivityTimeout />
       <Header
         isSidebarOpen={isSidebarOpen}
