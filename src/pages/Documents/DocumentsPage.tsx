@@ -171,6 +171,7 @@ export const DocumentsPage: React.FC = () => {
           </table>
         </div>
         <div className="bg-[var(--color-surface-panel)] p-3 border-t border-[var(--color-surface-border)] text-[9px] font-mono text-[var(--color-text-muted)] uppercase tracking-widest flex justify-between items-center">
+          <span className="text-red-500 font-bold">DEBUG: ALL={allDocuments.length}, FILTERED={filteredDocuments.length}, NIVEL={userNivel}</span>
           <span>REGISTROS ENCONTRADOS: {filteredDocuments.length}</span>
           <span>NÍVEL_AUTORIZAÇÃO_OP: {userNivel}</span>
         </div>

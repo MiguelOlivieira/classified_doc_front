@@ -36,7 +36,7 @@ export const AppLayout: React.FC = () => {
               return {
                 id: d.id,
                 codigo: `${d.id}-G${nivel}`,
-                titulo: d.titulo,
+                titulo: d.titulo || 'Sem Título',
                 subtitulo: '',
                 departamento: d.departamento || 'GERAL',
                 nivelAcesso: nivel,
@@ -46,17 +46,45 @@ export const AppLayout: React.FC = () => {
                 ultimaAtualizacao: createdDate,
                 status: 'ATIVO',
                 tags: [],
-                resumo: d.titulo,
+                resumo: d.titulo || '',
                 conteudo: 'Acesse o documento para visualizar o conteúdo criptografado.',
                 contemDadosSensiveis: false,
                 paginas: 1,
                 historicoAcesso: []
               };
             });
+            
+            // LOG DIAGNÓSTICO
+            apiFetch('/api/documentos/frontend-log', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ event: 'mapped_docs', count: docsMapped.length, rawCount: data.documents.length })
+            });
+
             dispatch(setDocuments(docsMapped));
+          } else {
+            apiFetch('/api/documentos/frontend-log', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ event: 'data_status_fail', status: data.status, hasDocs: !!data.documents })
+            });
           }
         })
-        .catch(console.error);
+        .catch((e) => {
+          apiFetch('/api/documentos/frontend-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event: 'fetch_catch', error: e.message })
+          });
+          console.error(e);
+          dispatch({
+            type: 'auth/logSecurityEvent',
+            payload: {
+              tipo: 'AVISO',
+              mensagem: `DEBUG FETCH ERROR: ${e.message}`
+            }
+          });
+        });
     }
   }, [isAuthenticated, user, dispatch]);
 
