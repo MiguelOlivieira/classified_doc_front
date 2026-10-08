@@ -33,6 +33,8 @@ export const DocumentDetailsPage: React.FC = () => {
   const [canaryResult, setCanaryResult] = useState<{ message: string; canaryUrl: string; content: string } | null>(null);
   const [blackout, setBlackout] = useState(false);
 
+  const [refreshCounter, setRefreshCounter] = useState(0);
+
   // Proteção contra Print Screen e Cópia (Software-level DRM)
   React.useEffect(() => {
     const reportViolation = async (type: string) => {
@@ -132,20 +134,16 @@ export const DocumentDetailsPage: React.FC = () => {
       }
     };
     
-    if (id) fetchDoc();
-  }, [id, user]);
+    if (id && user) fetchDoc();
+  }, [id, user, refreshCounter]);
 
   const handleMfaSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!mfaCode.trim()) return;
     sessionStorage.setItem('temp_mfa_token', mfaCode.trim());
-    // Trigger reload
     setLoading(true);
     setShowMfaInput(false);
-    // Reloads via useEffect trigger is hard since id/user didn't change, 
-    // so we'll just dispatch a re-render or call it again.
-    // Easiest is to force a state change. We can just reload the page or use a refresh counter.
-    window.location.reload();
+    setRefreshCounter(prev => prev + 1);
   };
 
   if (loading) {
