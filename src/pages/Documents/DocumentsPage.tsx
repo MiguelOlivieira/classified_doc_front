@@ -107,8 +107,8 @@ export const DocumentsPage: React.FC = () => {
             ultimaAtualizacao: createdDate,
             status: 'ATIVO',
             tags: [],
-            resumo: d.titulo || '',
-            conteudo: 'Acesse o documento para visualizar o conteúdo criptografado.',
+            resumo: d.resumo || d.titulo || '',
+            conteudo: d.conteudo,
             contemDadosSensiveis: false,
             paginas: 1,
             historicoAcesso: []

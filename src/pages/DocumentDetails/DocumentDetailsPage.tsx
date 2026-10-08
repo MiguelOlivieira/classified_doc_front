@@ -23,8 +23,12 @@ export const DocumentDetailsPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const documents = useAppSelector((state) => state.documents.documents);
   
+  const [doc, setDoc] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [showMfaInput, setShowMfaInput] = useState(false);
+  const [mfaCode, setMfaCode] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [canaryResult, setCanaryResult] = useState<{ message: string; canaryUrl: string; content: string } | null>(null);
   const [blackout, setBlackout] = useState(false);
@@ -91,18 +95,115 @@ export const DocumentDetailsPage: React.FC = () => {
       window.removeEventListener('keydown', handleKey);
       document.removeEventListener('copy', handleCopy);
     };
-  }, []);
+  }, [id, user, dispatch, navigate]);
 
-  const doc = documents.find(
-    (d) =>
-      (d.id === id || d.codigo.toLowerCase() === id?.toLowerCase()) &&
-      (podeAcessar(user?.nivelAcesso ?? NivelAcesso.PUBLICO, d.nivelAcesso) || d.nivelAcesso === NivelAcesso.ULTRASSECRETO)
-  );
+  React.useEffect(() => {
+    const fetchDoc = async () => {
+      try {
+        setLoading(true);
+        setErrorMsg('');
+        // Pede para o usuário digitar o MFA se for necessário (o modal global injeta o token)
+        // Isso é tratado globalmente no AppLayout, mas vamos enviar o header se tiver
+        const mfaToken = sessionStorage.getItem('temp_mfa_token') || '';
+        
+        const res = await apiFetch(`/api/documentos/${id}`, {
+          headers: {
+            'x-user-id': user?.id || '',
+            'x-user-role': user?.cargo || '',
+            'x-mfa-token': mfaToken
+          }
+        });
+        
+        const data = await res.json();
+        
+        if (res.status === 401 && data.challenge === 'mfa_required') {
+          setShowMfaInput(true);
+          setErrorMsg('');
+        } else if (res.ok && data.document) {
+          setDoc(data.document);
+          setShowMfaInput(false);
+        } else {
+          setErrorMsg(data.error || 'Erro ao carregar documento.');
+        }
+      } catch (err) {
+        setErrorMsg('Erro de rede ao buscar documento.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (id) fetchDoc();
+  }, [id, user]);
+
+  const handleMfaSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaCode.trim()) return;
+    sessionStorage.setItem('temp_mfa_token', mfaCode.trim());
+    // Trigger reload
+    setLoading(true);
+    setShowMfaInput(false);
+    // Reloads via useEffect trigger is hard since id/user didn't change, 
+    // so we'll just dispatch a re-render or call it again.
+    // Easiest is to force a state change. We can just reload the page or use a refresh counter.
+    window.location.reload();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+        <p>Verificando autorização e descriptografando documento...</p>
+      </div>
+    );
+  }
+
+  if (showMfaInput) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-slate-200">
+        <Shield className="w-16 h-16 text-[var(--color-accent-amber)] mb-6" />
+        <h2 className="text-xl font-bold uppercase tracking-widest mb-2">Autenticação Adaptativa</h2>
+        <p className="text-sm font-mono text-[var(--color-text-muted)] mb-6 text-center max-w-md uppercase">
+          Acesso a conteúdo restrito exige confirmação de token MFA.
+        </p>
+        <form onSubmit={handleMfaSubmit} className="flex flex-col items-center gap-4 w-full max-w-xs">
+          <input 
+            type="text" 
+            placeholder="Ex: 123456" 
+            value={mfaCode}
+            onChange={(e) => setMfaCode(e.target.value)}
+            className="w-full bg-[#111] border border-[#333] p-3 text-center text-xl font-mono tracking-widest text-white focus:outline-none focus:border-[var(--color-accent-amber)]"
+            maxLength={6}
+            autoFocus
+          />
+          <button type="submit" className="w-full bg-[var(--color-accent-amber)] hover:bg-yellow-600 text-black font-bold uppercase tracking-widest py-3 transition-colors">
+            Verificar Identidade
+          </button>
+        </form>
+        <button onClick={() => navigate('/documentos')} className="mt-6 text-[10px] uppercase font-mono tracking-widest text-[#666] hover:text-white transition-colors">
+          Cancelar e Voltar
+        </button>
+      </div>
+    );
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+        <AlertTriangle className="w-12 h-12 text-[var(--color-accent-red)] mb-4" />
+        <p className="text-[var(--color-accent-red)] font-bold mb-4 uppercase">{errorMsg}</p>
+        <button
+          onClick={() => navigate('/documentos')}
+          className="mt-4 text-blue-400 hover:underline"
+        >
+          Voltar para listagem
+        </button>
+      </div>
+    );
+  }
 
   if (!doc) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-        <p>Documento não encontrado.</p>
+        <p>Documento não encontrado ou acesso negado.</p>
         <button
           onClick={() => navigate('/documentos')}
           className="mt-4 text-blue-400 hover:underline"
