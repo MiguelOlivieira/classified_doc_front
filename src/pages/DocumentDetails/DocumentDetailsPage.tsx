@@ -121,9 +121,15 @@ export const DocumentDetailsPage: React.FC = () => {
         if (res.status === 401 && data.challenge === 'mfa_required') {
           setShowMfaInput(true);
           setErrorMsg('');
+        } else if (res.status === 401 && data.error === 'Credencial MFA inválida.') {
+          // O token que estava no sessionStorage expirou ou está incorreto
+          sessionStorage.removeItem('temp_mfa_token');
+          setShowMfaInput(true);
+          setErrorMsg('Token expirado ou inválido. Digite novamente.');
         } else if (res.ok && data.document) {
           setDoc(data.document);
           setShowMfaInput(false);
+          setErrorMsg('');
         } else {
           setErrorMsg(data.error || 'Erro ao carregar documento.');
         }
@@ -162,6 +168,11 @@ export const DocumentDetailsPage: React.FC = () => {
         <p className="text-sm font-mono text-[var(--color-text-muted)] mb-6 text-center max-w-md uppercase">
           Acesso a conteúdo restrito exige confirmação de token MFA.
         </p>
+        {errorMsg && (
+          <div className="mb-4 text-center font-bold text-[var(--color-accent-red)] uppercase text-sm border border-[var(--color-accent-red)] p-2">
+            {errorMsg}
+          </div>
+        )}
         <form onSubmit={handleMfaSubmit} className="flex flex-col items-center gap-4 w-full max-w-xs">
           <input 
             type="text" 
