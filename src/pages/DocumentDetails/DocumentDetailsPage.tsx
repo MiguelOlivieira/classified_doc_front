@@ -37,7 +37,21 @@ export const DocumentDetailsPage: React.FC = () => {
 
   // Proteção contra Print Screen e Cópia (Software-level DRM)
   React.useEffect(() => {
-    const reportViolation = async (type: string) => {
+    let violationReported = false;
+    const reportViolation = async (type: string, origem?: Event) => {
+      // Dispara uma única vez (keydown + keyup geravam duplicidade)
+      if (violationReported) return;
+      violationReported = true;
+      console.warn('[Sentinela][DRM] Violação detectada:', type, origem ? {
+        evento: origem.type,
+        key: (origem as KeyboardEvent).key,
+        code: (origem as KeyboardEvent).code,
+        meta: (origem as KeyboardEvent).metaKey,
+        shift: (origem as KeyboardEvent).shiftKey,
+        ctrl: (origem as KeyboardEvent).ctrlKey,
+        alt: (origem as KeyboardEvent).altKey,
+        isTrusted: origem.isTrusted,
+      } : {});
       setBlackout(true);
       
       // Envia evento para o backend
@@ -73,19 +87,26 @@ export const DocumentDetailsPage: React.FC = () => {
     };
 
     const handleKey = (e: KeyboardEvent) => {
+      // Ignora eventos sintéticos (extensões, autofill, etc.)
+      if (!e.isTrusted) return;
       // Tecla PrintScreen (Windows/Linux)
       if (e.key === 'PrintScreen') {
-        reportViolation('PrintScreen');
+        reportViolation('PrintScreen', e);
+        return;
       }
-      // Atalhos de captura do Mac (Meta + Shift + 3/4/5) ou Windows (Win + Shift + S)
-      if ((e.metaKey && e.shiftKey) || (e.key === 's' && e.shiftKey && e.metaKey)) {
-        reportViolation('PrintScreen Atalho');
+      // Atalhos de captura: Win+Shift+S (Windows) ou Cmd+Shift+3/4/5 (Mac)
+      if (e.metaKey && e.shiftKey && ['KeyS', 'Digit3', 'Digit4', 'Digit5'].includes(e.code)) {
+        reportViolation('PrintScreen Atalho', e);
       }
     };
 
     const handleCopy = (e: ClipboardEvent) => {
+      if (!e.isTrusted) return;
+      // Só considera cópia de texto realmente selecionado na página
+      const selecionado = window.getSelection()?.toString() || '';
+      if (!selecionado.trim()) return;
       e.preventDefault();
-      reportViolation('Copy Text');
+      reportViolation('Copy Text', e);
     };
 
     window.addEventListener('keyup', handleKey);
@@ -429,7 +450,7 @@ ${doc.conteudo}
             Audit_Trail
           </h3>
           <div className="space-y-1">
-            {doc.historicoAcesso.slice(0, 3).map((hist) => (
+            {(doc.historicoAcesso || []).slice(0, 3).map((hist: any) => (
               <div key={hist.id} className="flex flex-col sm:flex-row sm:items-center justify-between text-[10px] font-mono py-2 border-b border-[#222] last:border-0">
                 <div className="text-[#888]">
                   <span className="font-bold text-[#ccc] uppercase">{hist.usuario}</span>
