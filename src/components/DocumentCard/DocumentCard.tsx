@@ -47,7 +47,7 @@ const performFetch = async (token?: string) => {
     setMfaError('');
     try {
       const headers: Record<string, string> = {
-        'x-user-id': user?.username || user?.id || 'anonymous',
+        'x-user-id': user?.id || 'anonymous',
         'x-device-fingerprint': navigator.userAgent,
         'x-document-level': docLevelInfo?.nome || String(documento.nivelAcesso),
       };
@@ -169,6 +169,9 @@ const performFetch = async (token?: string) => {
     
     const success = await performFetch(mfaToken);
     if (success) {
+      // Reaproveita o código recém validado na página de detalhes (evita pedir 2x)
+      sessionStorage.setItem('temp_mfa_token', mfaToken.trim());
+      setMfaToken('');
       setShowMfaModal(false);
       if (user) {
         dispatch(
