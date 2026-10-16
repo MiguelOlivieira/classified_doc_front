@@ -12,7 +12,9 @@ export const AuditLogsPage: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   const documents = useAppSelector((state) => state.documents.documents);
 
-  const isUnauthorized = !user || user.nivelAcesso < NivelAcesso.ULTRASSECRETO;
+  const userRole = (user?.cargo || '').toUpperCase();
+  const isAdminOrGestor = Boolean(user && (user.nivelAcesso >= NivelAcesso.ULTRASSECRETO || userRole === 'ADMIN' || userRole === 'GESTOR'));
+  const isUnauthorized = !isAdminOrGestor;
 
   useEffect(() => {
     if (isUnauthorized) {
@@ -24,7 +26,8 @@ export const AuditLogsPage: React.FC = () => {
       // Trigger backend honeypot endpoint
       apiFetch('/api/auditoria', {
         headers: {
-          'x-user-id': user?.id || 'anonymous'
+          'x-user-id': user?.id || 'anonymous',
+          'x-user-role': user?.cargo || ''
         }
       }).catch(() => {});
 

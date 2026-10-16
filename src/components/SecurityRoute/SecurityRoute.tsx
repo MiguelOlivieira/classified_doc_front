@@ -11,22 +11,40 @@ interface SecurityRouteProps {
 
 export const SecurityRoute: React.FC<SecurityRouteProps> = ({ children }) => {
   const { id } = useParams<{ id: string }>();
-  const location = useLocation();
-  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const documents = useAppSelector((state) => state.documents.documents);
 
   const userLevel = user?.nivelAcesso ?? NivelAcesso.PUBLICO;
 
-  const targetDoc = documents.find(
-    (d) => (d.id === id || d.codigo.toLowerCase() === id?.toLowerCase()) && podeAcessar(userLevel, d.nivelAcesso)
+  // Se os documentos ainda não foram carregados no Redux (ex: refresh direto na URL),
+  // permite a renderização para que o DocumentDetailsPage busque a autorização diretamente na API.
+  if (documents.length === 0) {
+    return <>{children}</>;
+  }
+
+  const docExists = documents.find(
+    (d) => d.id === id || d.codigo.toLowerCase() === id?.toLowerCase()
   );
 
-  // Removido useEffect de logSecurityEvent para evitar vazamento de existência
-  // de documentos restritos se o usuário tentar adivinhar a URL.
+  // Se o documento existe mas o usuário não possui nível suficiente, redireciona para a tela de acesso negado
+  if (docExists && !podeAcessar(userLevel, docExists.nivelAcesso)) {
+    return (
+      <Navigate
+        to="/acesso-negado"
+        state={{
+          docId: docExists.id,
+          docCodigo: docExists.codigo,
+          docTitulo: docExists.titulo,
+          nivelExigido: docExists.nivelAcesso,
+          nivelUsuario: userLevel,
+        }}
+        replace
+      />
+    );
+  }
 
-  // Verifica se o documento não existe (ou se não há acesso, o que filtra acima)
-  if (!targetDoc) {
+  // Se o documento realmente não existe
+  if (!docExists) {
     return <Navigate to="/documentos" replace />;
   }
 

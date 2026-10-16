@@ -74,7 +74,7 @@ export const ProfilePage: React.FC = () => {
       setMfaError('');
       const response = await apiFetch('/api/auth/2fa/enable', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': user.id || 'usr-002' },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': user.id },
         body: JSON.stringify({ code: mfaCode })
       });
       if (response.ok) {

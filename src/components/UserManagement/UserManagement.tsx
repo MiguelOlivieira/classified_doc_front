@@ -20,8 +20,11 @@ export const UserManagement: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const userRole = (user?.cargo || '').toUpperCase();
+  const isAdminOrGestor = Boolean(user && (user.nivelAcesso >= NivelAcesso.ULTRASSECRETO || userRole === 'ADMIN' || userRole === 'GESTOR'));
+
   // Só admin ou Nível 5 (Ultrassecreto) pode cadastrar usuários
-  if (!user || user.nivelAcesso < NivelAcesso.ULTRASSECRETO) {
+  if (!user || !isAdminOrGestor) {
     return null;
   }
 
@@ -39,7 +42,8 @@ export const UserManagement: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': user.id // Mock admin token/header
+          'x-user-id': user.id,
+          'x-user-role': user.cargo || ''
         },
         body: JSON.stringify({
           username: email.split('@')[0].toLowerCase().replace(/\s/g, ''),

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, ShieldAlert, CheckCircle, RefreshCw, AlertTriangle, Play } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { useAppSelector } from '../../store/hooks';
 
 interface CBStats {
   fires: number;
@@ -22,6 +23,7 @@ interface CBData {
 }
 
 export const CircuitBreakerPanel: React.FC = () => {
+  const { user } = useAppSelector((state) => state.auth);
   const [data, setData] = useState<CBData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
@@ -76,7 +78,8 @@ export const CircuitBreakerPanel: React.FC = () => {
       // (Não usamos doc-001 porque ele é ULTRASSECRETO e ativa o MFA Step-up Auth)
       const res = await apiFetch('/api/documentos/doc-002', {
         headers: {
-          'x-user-id': 'usr-001', // ID do admin
+          'x-user-id': user?.id || 'usr-001',
+          'x-user-role': user?.cargo || 'GESTOR'
         }
       });
       const json = await res.json();

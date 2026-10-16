@@ -136,6 +136,8 @@ export const DocumentDetailsPage: React.FC = () => {
           headers: {
             'x-user-id': user?.id || '',
             'x-user-role': user?.cargo || '',
+            'x-user-name': user?.nome || '',
+            'x-user-username': user?.username || '',
             'x-mfa-token': mfaToken
           }
         });

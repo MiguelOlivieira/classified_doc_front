@@ -16,20 +16,19 @@ import {
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, securityAlerts } = useAppSelector((state) => state.auth);
-  const documents = useAppSelector(
-    (state) => state.documents.documents
-  ).filter((doc) => podeAcessar(user?.nivelAcesso ?? NivelAcesso.PUBLICO, doc.nivelAcesso));
+  const allDocuments = useAppSelector((state) => state.documents.documents);
+  const userLevel = user?.nivelAcesso ?? NivelAcesso.PUBLICO;
+
+  const totalDocuments = allDocuments.length;
+  const accessibleDocuments = allDocuments.filter((doc) => podeAcessar(userLevel, doc.nivelAcesso)).length;
+  const restrictedDocuments = Math.max(0, totalDocuments - accessibleDocuments);
+  const documents = allDocuments.filter((doc) => podeAcessar(userLevel, doc.nivelAcesso));
+
   const documentosRecentesPorUsuario = useAppSelector(
     (state) => state.documents.documentosRecentesPorUsuario
   ) || {};
   
   const documentosRecentes = user?.id ? (documentosRecentesPorUsuario[user.id] || []) : [];
-
-  const userLevel = user?.nivelAcesso ?? NivelAcesso.PUBLICO;
-
-  const totalDocuments = documents.length;
-  const accessibleDocuments = documents.length; // all docs are now accessible docs
-  const restrictedDocuments = 0; // restricted docs are not even counted
 
   const recentDocs = documents
     .filter((doc) => documentosRecentes.includes(doc.id))

@@ -105,6 +105,9 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
     try {
       const headers: Record<string, string> = {
         'x-user-id': user?.id || 'anonymous',
+        'x-user-role': user?.cargo || '',
+        'x-user-name': user?.nome || '',
+        'x-user-username': user?.username || '',
         'x-device-fingerprint': navigator.userAgent,
         'x-document-level': docLevelInfo?.nome || String(documento.nivelAcesso),
       };

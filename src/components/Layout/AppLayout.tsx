@@ -19,7 +19,12 @@ export const AppLayout: React.FC = () => {
     if (isAuthenticated && user) {
       setDebugMsg('FETCH_STARTED');
       apiFetch('/api/documentos', {
-        headers: { 'x-user-id': user.id, 'x-user-role': user.cargo }
+        headers: { 
+          'x-user-id': user.id, 
+          'x-user-role': user.cargo,
+          'x-user-name': user.nome,
+          'x-user-username': user.username
+        }
       })
         .then(res => {
           setDebugMsg(`FETCH_RES_${res.status}`);

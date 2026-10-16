@@ -96,6 +96,9 @@ const documentSlice = createSlice({
       // Adiciona registro ao histórico do documento
       const doc = state.documents.find((d) => d.id === docId);
       if (doc) {
+        if (!doc.historicoAcesso) {
+          doc.historicoAcesso = [];
+        }
         doc.historicoAcesso.unshift({
           id: `h-${Date.now()}`,
           data: new Date().toLocaleString('pt-BR', {

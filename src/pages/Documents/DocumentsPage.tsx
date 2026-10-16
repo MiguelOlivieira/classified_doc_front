@@ -31,10 +31,7 @@ export const DocumentsPage: React.FC = () => {
   } = useAppSelector((state) => state.documents);
   const documentosRecentes = user?.id ? (documentosRecentesPorUsuario[user.id] || []) : [];
 
-  const documents = useMemo(
-    () => allDocuments.filter((doc) => podeAcessar(userNivel, doc.nivelAcesso)),
-    [allDocuments, userNivel]
-  );
+  const documents = allDocuments;
 
   const departments = useMemo(() => {
     const depts = new Set(documents.map((d) => d.departamento));
@@ -101,7 +98,8 @@ export const DocumentsPage: React.FC = () => {
             subtitulo: '',
             departamento: d.departamento || 'GERAL',
             nivelAcesso: nivel,
-            autor: 'SISTEMA',
+            autor: d.criadoPor || 'SISTEMA',
+            criadoPor: d.criadoPor || 'SISTEMA',
             cargoAutor: 'GESTOR',
             dataCriacao: createdDate,
             ultimaAtualizacao: createdDate,
