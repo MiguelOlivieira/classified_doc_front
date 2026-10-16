@@ -19,6 +19,7 @@ export interface Documento {
   nivelAcesso: NivelAcesso;
   departamento: string;
   autor: string;
+  criadoPor?: string;
   cargoAutor: string;
   dataCriacao: string;
   ultimaAtualizacao: string;

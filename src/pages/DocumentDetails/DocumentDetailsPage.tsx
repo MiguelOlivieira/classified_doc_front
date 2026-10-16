@@ -5,6 +5,7 @@ import { NivelAcesso } from '../../types/auth';
 import { logout, logSecurityEvent } from '../../store/authSlice';
 import { SecurityBadge } from '../../components/SecurityBadge/SecurityBadge';
 import { podeAcessar } from '../../types/document';
+import { excluirDocumento } from '../../store/documentSlice';
 import {
   ArrowLeft,
   Calendar,
@@ -14,7 +15,8 @@ import {
   Clock,
   Shield,
   Download,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
@@ -30,6 +32,7 @@ export const DocumentDetailsPage: React.FC = () => {
   const [showMfaInput, setShowMfaInput] = useState(false);
   const [mfaCode, setMfaCode] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [canaryResult, setCanaryResult] = useState<{ message: string; canaryUrl: string; content: string } | null>(null);
   const [blackout, setBlackout] = useState(false);
 
@@ -315,6 +318,63 @@ ${doc.conteudo}
     }
   };
 
+  const userRole = (user?.cargo || '').toUpperCase();
+  const isGestorOuAdmin = userRole === 'GESTOR' || userRole === 'ADMIN';
+  const docCriador = (doc?.criadoPor || '').trim().toLowerCase();
+  const reqUserId = (user?.id || '').trim().toLowerCase();
+  const reqUserName = (user?.nome || '').trim().toLowerCase();
+  const reqUserUsername = (user?.username || '').trim().toLowerCase();
+
+  const isCriador = Boolean(docCriador && (
+    docCriador === reqUserId ||
+    docCriador === reqUserName ||
+    docCriador === reqUserUsername ||
+    (doc?.autor && doc.autor.trim().toLowerCase() === reqUserName)
+  ));
+
+  const podeDeletar = isGestorOuAdmin || isCriador;
+
+  const handleDeleteDocument = async () => {
+    if (!doc) return;
+    const confirmacao = window.confirm(
+      `ATENÇÃO: Deseja realmente excluir permanentemente o documento "${doc.titulo}" (${doc.codigo || doc.id})?\n\nEsta operação não poderá ser desfeita.`
+    );
+    if (!confirmacao) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await apiFetch(`/api/documentos/${doc.id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-id': user?.id || '',
+          'x-user-role': user?.cargo || '',
+          'x-user-name': user?.nome || '',
+          'x-user-username': user?.username || ''
+        }
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        dispatch(excluirDocumento(doc.id));
+        dispatch(logSecurityEvent({
+          tipo: 'AUDITORIA',
+          mensagem: `Documento ${doc.codigo || doc.id} excluído com sucesso por ${user?.nome} (${user?.cargo}).`,
+          documentoCodigo: doc.codigo || doc.id,
+          nivelTentativa: user?.nivelAcesso || NivelAcesso.PUBLICO,
+        }));
+        alert('Documento excluído com sucesso.');
+        navigate('/documentos');
+      } else {
+        alert(data.error || 'Acesso negado: falha ao excluir documento.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('Erro de conexão ao tentar excluir o documento.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* BLACKOUT SCREEN */}
@@ -337,14 +397,29 @@ ${doc.conteudo}
           RETURN
         </button>
         
-        <button 
-          onClick={handleDownload}
-          disabled={isDownloading}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-text-main)] hover:bg-[var(--color-accent-amber)] text-[var(--color-surface-bg)] text-[10px] font-mono font-bold uppercase tracking-widest transition-colors disabled:opacity-50"
-        >
-          <Download className="w-3.5 h-3.5" />
-          {isDownloading ? 'ENCRYPTING...' : 'SECURE_DOWNLOAD [CANARY_TOKEN]'}
-        </button>
+        <div className="flex items-center gap-3">
+          {podeDeletar && (
+            <button 
+              id="btn-delete-document"
+              onClick={handleDeleteDocument}
+              disabled={isDeleting}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-red-950/70 hover:bg-red-800 text-red-200 border border-red-700/80 text-[10px] font-mono font-bold uppercase tracking-widest transition-colors disabled:opacity-50 cursor-pointer"
+              title={isGestorOuAdmin ? 'Excluir documento (Privilégio Administrador/Gestor)' : 'Excluir documento (Criador)'}
+            >
+              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+              {isDeleting ? 'EXCLUINDO...' : 'EXCLUIR_DOCUMENTO'}
+            </button>
+          )}
+
+          <button 
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-text-main)] hover:bg-[var(--color-accent-amber)] text-[var(--color-surface-bg)] text-[10px] font-mono font-bold uppercase tracking-widest transition-colors disabled:opacity-50"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {isDownloading ? 'ENCRYPTING...' : 'SECURE_DOWNLOAD [CANARY_TOKEN]'}
+          </button>
+        </div>
       </div>
 
       {canaryResult && (

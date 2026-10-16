@@ -4,7 +4,7 @@ import { Documento, podeAcessar, NIVEIS_INFO } from '../../types/document';
 import { NivelAcesso } from '../../types/auth';
 import { SecurityBadge } from '../SecurityBadge/SecurityBadge';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { toggleFavorito, registrarAcessoDocumento } from '../../store/documentSlice';
+import { toggleFavorito, registrarAcessoDocumento, excluirDocumento } from '../../store/documentSlice';
 import { logSecurityEvent } from '../../store/authSlice';
 import { apiFetch } from '../../lib/api';
 import {
@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   FileCheck2,
   QrCode,
+  Trash2,
 } from 'lucide-react';
 
 interface DocumentCardProps {
@@ -41,8 +42,64 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
   const [mfaToken, setMfaToken] = React.useState('');
   const [mfaError, setMfaError] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
-const performFetch = async (token?: string) => {
+  const userRole = (user?.cargo || '').toUpperCase();
+  const isGestorOuAdmin = userRole === 'GESTOR' || userRole === 'ADMIN';
+  const docCriador = (documento.criadoPor || '').trim().toLowerCase();
+  const reqUserId = (user?.id || '').trim().toLowerCase();
+  const reqUserName = (user?.nome || '').trim().toLowerCase();
+  const reqUserUsername = (user?.username || '').trim().toLowerCase();
+
+  const isCriador = Boolean(docCriador && (
+    docCriador === reqUserId ||
+    docCriador === reqUserName ||
+    docCriador === reqUserUsername ||
+    (documento.autor && documento.autor.trim().toLowerCase() === reqUserName)
+  ));
+
+  const podeDeletar = isGestorOuAdmin || isCriador;
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const confirmacao = window.confirm(
+      `Deseja realmente excluir permanentemente o documento "${documento.titulo}" (${documento.codigo})?\n\nEsta operação não poderá ser desfeita.`
+    );
+    if (!confirmacao) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await apiFetch(`/api/documentos/${documento.id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-id': user?.id || '',
+          'x-user-role': user?.cargo || '',
+          'x-user-name': user?.nome || '',
+          'x-user-username': user?.username || ''
+        }
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        dispatch(excluirDocumento(documento.id));
+        dispatch(logSecurityEvent({
+          tipo: 'AUDITORIA',
+          mensagem: `Documento ${documento.codigo} excluído por ${user?.nome} (${user?.cargo}).`,
+          documentoCodigo: documento.codigo,
+          nivelTentativa: user?.nivelAcesso || NivelAcesso.PUBLICO,
+        }));
+      } else {
+        alert(data.error || 'Acesso negado: falha ao excluir documento.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('Erro ao excluir documento.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const performFetch = async (token?: string) => {
     setIsLoading(true);
     setMfaError('');
     try {
@@ -51,7 +108,7 @@ const performFetch = async (token?: string) => {
         'x-device-fingerprint': navigator.userAgent,
         'x-document-level': docLevelInfo?.nome || String(documento.nivelAcesso),
       };
-      
+
       if (token) {
         headers['x-mfa-token'] = token;
       }
@@ -59,13 +116,13 @@ const performFetch = async (token?: string) => {
       console.log(`[Sentinela] Solicitando acesso ao documento ${documento.id}...`, headers);
 
       // Chama o backend na Render
-      const res = await apiFetch(`/api/documentos/${documento.id}`, { 
+      const res = await apiFetch(`/api/documentos/${documento.id}`, {
         method: 'GET',
-        headers 
+        headers
       });
 
       console.log(`[Sentinela] Status da resposta:`, res.status);
-      
+
       // Se a resposta for 200 OK -> Acesso liberado!
       if (res.ok) {
         return true;
@@ -83,7 +140,7 @@ const performFetch = async (token?: string) => {
       console.log(`[Sentinela] Dados do erro da API:`, errorData);
 
       // 🚨 CASO 1: NÃO CONFIGUROU O 2FA AINDA -> Exibe o modal de aviso para configurar
-      const isMfaSetupRequired = 
+      const isMfaSetupRequired =
         errorData.challenge === 'mfa_setup_required' ||
         (res.status === 403 && String(errorData.error).toLowerCase().includes('configurar'));
 
@@ -94,8 +151,8 @@ const performFetch = async (token?: string) => {
       }
 
       // 🚨 CASO 2: PEDE O CÓDIGO DO CELULAR (Google Authenticator)
-      const isMfaChallenge = 
-        errorData.challenge === 'mfa_required' || 
+      const isMfaChallenge =
+        errorData.challenge === 'mfa_required' ||
         (res.status === 401 && !token);
 
       if (isMfaChallenge) {
@@ -139,7 +196,7 @@ const performFetch = async (token?: string) => {
   };
 
 
- const handleOpenDocument = async () => {
+  const handleOpenDocument = async () => {
     // Se o documento for acessível pelo RBAC OU for de nível crítico que exige challenge no backend
     const success = await performFetch();
     if (success) {
@@ -166,7 +223,7 @@ const performFetch = async (token?: string) => {
   const handleMfaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mfaToken) return;
-    
+
     const success = await performFetch(mfaToken);
     if (success) {
       // Reaproveita o código recém validado na página de detalhes (evita pedir 2x)
@@ -241,8 +298,8 @@ const performFetch = async (token?: string) => {
             <label className="block text-[10px] font-mono font-bold text-[var(--color-text-muted)] mb-1.5 uppercase tracking-widest">
               CÓDIGO DE 6 DÍGITOS (GOOGLE AUTHENTICATOR)
             </label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={mfaToken}
               onChange={(e) => setMfaToken(e.target.value)}
               className="w-full bg-[#111] border border-[#333] px-3 py-2 text-white focus:outline-none focus:border-[var(--color-accent-amber)] font-mono text-center tracking-widest text-base uppercase"
@@ -282,11 +339,10 @@ const performFetch = async (token?: string) => {
     return (
       <tr
         id={`document-row-${documento.id}`}
-        className={`border-b border-[#222] transition-colors ${
-          isAccessible
+        className={`border-b border-[#222] transition-colors ${isAccessible
             ? 'hover:bg-[#111] cursor-pointer'
             : 'bg-[#0a0a0a] hover:bg-[#111] cursor-not-allowed opacity-85'
-        }`}
+          }`}
         onClick={handleOpenDocument}
       >
         <td className="py-3 px-4">
@@ -298,9 +354,8 @@ const performFetch = async (token?: string) => {
             title={isFavorito ? 'Remover dos favoritos' : 'Favoritar documento'}
           >
             <Star
-              className={`w-4 h-4 ${
-                isFavorito ? 'fill-[var(--color-accent-amber)] text-[var(--color-accent-amber)]' : 'text-inherit'
-              }`}
+              className={`w-4 h-4 ${isFavorito ? 'fill-[var(--color-accent-amber)] text-[var(--color-accent-amber)]' : 'text-inherit'
+                }`}
             />
           </button>
         </td>
@@ -317,9 +372,8 @@ const performFetch = async (token?: string) => {
         <td className="py-3 px-4">
           <div className="flex flex-col">
             <span
-              className={`text-sm font-medium ${
-                isAccessible ? 'text-slate-100' : 'text-slate-400 line-clamp-1'
-              }`}
+              className={`text-sm font-medium ${isAccessible ? 'text-slate-100' : 'text-slate-400 line-clamp-1'
+                }`}
             >
               {documento.titulo}
             </span>
@@ -338,31 +392,44 @@ const performFetch = async (token?: string) => {
           {documento.ultimaAtualizacao}
         </td>
         <td className="py-3 px-4 text-right">
-          {isAccessible ? (
-            <button
-              id={`view-btn-table-${documento.id}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenDocument();
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-mono font-bold bg-[#111] hover:bg-[#222] text-white border border-[#333] transition uppercase"
-            >
-              <Eye className="w-3.5 h-3.5 text-[var(--color-accent-amber)]" />
-              Visualizar
-            </button>
-          ) : (
-            <button
-              id={`restricted-btn-table-${documento.id}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenDocument();
-              }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-bold bg-red-950/40 text-red-300 border border-red-900/60 cursor-pointer hover:bg-red-900/40 transition uppercase"
-            >
-              <Lock className="w-3 h-3 text-[var(--color-accent-red)]" />
-              Restrito
-            </button>
-          )}
+          <div className="inline-flex items-center gap-2">
+            {podeDeletar && (
+              <button
+                id={`delete-btn-table-${documento.id}`}
+                onClick={handleDelete}
+                disabled={isDeleting}
+                title={isGestorOuAdmin ? 'Excluir documento (Privilégio Administrador/Gestor)' : 'Excluir documento (Criador)'}
+                className="p-1 text-red-500/70 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-900/50 transition cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {isAccessible ? (
+              <button
+                id={`view-btn-table-${documento.id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenDocument();
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-mono font-bold bg-[#111] hover:bg-[#222] text-white border border-[#333] transition uppercase"
+              >
+                <Eye className="w-3.5 h-3.5 text-[var(--color-accent-amber)]" />
+                Visualizar
+              </button>
+            ) : (
+              <button
+                id={`restricted-btn-table-${documento.id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenDocument();
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-bold bg-red-950/40 text-red-300 border border-red-900/60 cursor-pointer hover:bg-red-900/40 transition uppercase"
+              >
+                <Lock className="w-3 h-3 text-[var(--color-accent-red)]" />
+                Restrito
+              </button>
+            )}
+          </div>
           {mfaModal}
           {setupWarningModal}
         </td>
@@ -374,11 +441,10 @@ const performFetch = async (token?: string) => {
   return (
     <div
       id={`document-card-${documento.id}`}
-      className={`group relative border transition-colors flex flex-col justify-between overflow-hidden ${
-        isAccessible
+      className={`group relative border transition-colors flex flex-col justify-between overflow-hidden ${isAccessible
           ? 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)]'
           : 'bg-[#0e0e0e] border-[#222]'
-      }`}
+        }`}
     >
       <div
         className="h-1 w-full"
@@ -399,6 +465,18 @@ const performFetch = async (token?: string) => {
                   ATIVO
                 </span>
               )}
+              {podeDeletar && (
+                <button
+                  id={`del-btn-grid-${documento.id}`}
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="text-[var(--color-text-muted)] hover:text-red-400 transition-colors p-0.5 cursor-pointer"
+                  title={isGestorOuAdmin ? 'Excluir documento (Privilégio Administrador/Gestor)' : 'Excluir documento (Criador)'}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
               <button
                 id={`fav-btn-grid-${documento.id}`}
                 type="button"
@@ -407,20 +485,18 @@ const performFetch = async (token?: string) => {
                 title={isFavorito ? 'Remover dos favoritos' : 'Favoritar'}
               >
                 <Star
-                  className={`w-3.5 h-3.5 ${
-                    isFavorito ? 'fill-[var(--color-accent-amber)] text-[var(--color-accent-amber)]' : 'text-inherit'
-                  }`}
+                  className={`w-3.5 h-3.5 ${isFavorito ? 'fill-[var(--color-accent-amber)] text-[var(--color-accent-amber)]' : 'text-inherit'
+                    }`}
                 />
               </button>
             </div>
           </div>
 
           <h4
-            className={`text-sm font-semibold mb-2 uppercase tracking-wide ${
-              isAccessible
+            className={`text-sm font-semibold mb-2 uppercase tracking-wide ${isAccessible
                 ? 'text-white group-hover:text-[var(--color-accent-amber)] transition-colors'
                 : 'text-[var(--color-text-muted)]'
-            }`}
+              }`}
           >
             {documento.titulo}
           </h4>

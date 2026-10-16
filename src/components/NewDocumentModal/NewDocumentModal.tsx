@@ -102,6 +102,7 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
       departamento,
       nivelAcesso,
       autor: user.nome,
+      criadoPor: user.id || user.username || user.nome,
       cargoAutor: user.cargo || 'Operador',
       dataCriacao: dataAtual,
       ultimaAtualizacao: dataAtual,
@@ -130,7 +131,10 @@ export const NewDocumentModal: React.FC<NewDocumentModalProps> = ({ isOpen, onCl
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': user.id
+          'x-user-id': user.id,
+          'x-user-role': user.cargo || '',
+          'x-user-name': user.nome || '',
+          'x-user-username': user.username || ''
         },
         body: JSON.stringify({ documento: novoDocumento })
       });
