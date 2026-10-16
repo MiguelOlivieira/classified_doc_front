@@ -320,19 +320,19 @@ ${doc.conteudo}
     }
   };
 
-  const userRole = (user?.cargo || '').toUpperCase();
+  const userRole = (user?.cargo || (user as any)?.role || '').toUpperCase();
   const isGestorOuAdmin = userRole === 'GESTOR' || userRole === 'ADMIN';
   const docCriador = (doc?.criadoPor || '').trim().toLowerCase();
+  const docAutor = (doc?.autor || '').trim().toLowerCase();
   const reqUserId = (user?.id || '').trim().toLowerCase();
   const reqUserName = (user?.nome || '').trim().toLowerCase();
   const reqUserUsername = (user?.username || '').trim().toLowerCase();
+  const reqUserEmail = (user?.email || '').trim().toLowerCase();
 
-  const isCriador = Boolean(docCriador && (
-    docCriador === reqUserId ||
-    docCriador === reqUserName ||
-    docCriador === reqUserUsername ||
-    (doc?.autor && doc.autor.trim().toLowerCase() === reqUserName)
-  ));
+  const isCriador = Boolean(
+    (docCriador && (docCriador === reqUserId || docCriador === reqUserName || docCriador === reqUserUsername || docCriador === reqUserEmail)) ||
+    (docAutor && (docAutor === reqUserId || docAutor === reqUserName || docAutor === reqUserUsername || docAutor === reqUserEmail))
+  );
 
   const podeDeletar = isGestorOuAdmin || isCriador;
 
@@ -349,9 +349,10 @@ ${doc.conteudo}
         method: 'DELETE',
         headers: {
           'x-user-id': user?.id || '',
-          'x-user-role': user?.cargo || '',
+          'x-user-role': user?.cargo || (user as any)?.role || '',
           'x-user-name': user?.nome || '',
-          'x-user-username': user?.username || ''
+          'x-user-username': user?.username || '',
+          'x-user-email': user?.email || '',
         }
       });
 

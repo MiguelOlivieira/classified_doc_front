@@ -44,19 +44,19 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
   const [isLoading, setIsLoading] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const userRole = (user?.cargo || '').toUpperCase();
+  const userRole = (user?.cargo || (user as any)?.role || '').toUpperCase();
   const isGestorOuAdmin = userRole === 'GESTOR' || userRole === 'ADMIN';
   const docCriador = (documento.criadoPor || '').trim().toLowerCase();
+  const docAutor = (documento.autor || '').trim().toLowerCase();
   const reqUserId = (user?.id || '').trim().toLowerCase();
   const reqUserName = (user?.nome || '').trim().toLowerCase();
   const reqUserUsername = (user?.username || '').trim().toLowerCase();
+  const reqUserEmail = (user?.email || '').trim().toLowerCase();
 
-  const isCriador = Boolean(docCriador && (
-    docCriador === reqUserId ||
-    docCriador === reqUserName ||
-    docCriador === reqUserUsername ||
-    (documento.autor && documento.autor.trim().toLowerCase() === reqUserName)
-  ));
+  const isCriador = Boolean(
+    (docCriador && (docCriador === reqUserId || docCriador === reqUserName || docCriador === reqUserUsername || docCriador === reqUserEmail)) ||
+    (docAutor && (docAutor === reqUserId || docAutor === reqUserName || docAutor === reqUserUsername || docAutor === reqUserEmail))
+  );
 
   const podeDeletar = isGestorOuAdmin || isCriador;
 
@@ -73,9 +73,10 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
         method: 'DELETE',
         headers: {
           'x-user-id': user?.id || '',
-          'x-user-role': user?.cargo || '',
+          'x-user-role': user?.cargo || (user as any)?.role || '',
           'x-user-name': user?.nome || '',
-          'x-user-username': user?.username || ''
+          'x-user-username': user?.username || '',
+          'x-user-email': user?.email || '',
         }
       });
 
@@ -370,6 +371,11 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
               <Lock className="w-4 h-4 text-rose-400 shrink-0" />
             )}
             <span>{documento.codigo}</span>
+            {isCriador && (
+              <span className="px-1.5 py-0.5 bg-amber-950/60 border border-amber-500/50 text-[9px] font-mono text-amber-300 font-bold tracking-wider">
+                MEU DOC
+              </span>
+            )}
           </div>
         </td>
         <td className="py-3 px-4">
@@ -401,10 +407,11 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
                 id={`delete-btn-table-${documento.id}`}
                 onClick={handleDelete}
                 disabled={isDeleting}
-                title={isGestorOuAdmin ? 'Excluir documento (Privilégio Administrador/Gestor)' : 'Excluir documento (Criador)'}
-                className="p-1 text-red-500/70 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-900/50 transition cursor-pointer"
+                title={isGestorOuAdmin ? 'Excluir documento (Privilégio Administrador/Gestor)' : 'Excluir documento (Você é o criador)'}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold bg-red-950/60 hover:bg-red-800 text-red-200 border border-red-700/80 hover:border-red-500 transition-colors cursor-pointer"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                <span>EXCLUIR</span>
               </button>
             )}
             {isAccessible ? (
@@ -468,16 +475,22 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
                   ATIVO
                 </span>
               )}
+              {isCriador && (
+                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 bg-amber-950/70 text-amber-300 border border-amber-800/80 font-bold">
+                  MEU DOC
+                </span>
+              )}
               {podeDeletar && (
                 <button
                   id={`del-btn-grid-${documento.id}`}
                   type="button"
                   onClick={handleDelete}
                   disabled={isDeleting}
-                  className="text-[var(--color-text-muted)] hover:text-red-400 transition-colors p-0.5 cursor-pointer"
-                  title={isGestorOuAdmin ? 'Excluir documento (Privilégio Administrador/Gestor)' : 'Excluir documento (Criador)'}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-950/60 hover:bg-red-800 text-red-200 border border-red-700/80 text-[10px] font-mono font-bold transition-colors cursor-pointer"
+                  title={isGestorOuAdmin ? 'Excluir documento (Privilégio Administrador/Gestor)' : 'Excluir documento (Você é o criador)'}
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3 h-3 text-red-400" />
+                  <span>EXCLUIR</span>
                 </button>
               )}
               <button

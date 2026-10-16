@@ -11,7 +11,7 @@ import { apiFetch } from '../../lib/api';
 import { DocumentCard } from '../../components/DocumentCard/DocumentCard';
 import { NivelAcesso } from '../../types/auth';
 import { podeAcessar } from '../../types/document';
-import { Search, Filter, FileText, RefreshCw } from 'lucide-react';
+import { Search, Filter, FileText, RefreshCw, Check, UserCheck } from 'lucide-react';
 
 export const DocumentsPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -20,6 +20,9 @@ export const DocumentsPage: React.FC = () => {
 
   const { user } = useAppSelector((state) => state.auth);
   const userNivel = user?.nivelAcesso ?? NivelAcesso.PUBLICO;
+
+  // Filtro "Criados por mim"
+  const [apenasMeus, setApenasMeus] = React.useState(false);
 
   const {
     documents: allDocuments,
@@ -33,6 +36,25 @@ export const DocumentsPage: React.FC = () => {
 
   const documents = allDocuments;
 
+  const isDocumentoCriadoPorMim = React.useCallback((d: any) => {
+    if (!user) return false;
+    const docCriador = (d.criadoPor || '').trim().toLowerCase();
+    const docAutor = (d.autor || '').trim().toLowerCase();
+    const reqUserId = (user.id || '').trim().toLowerCase();
+    const reqUserName = (user.nome || '').trim().toLowerCase();
+    const reqUserUsername = (user.username || '').trim().toLowerCase();
+    const reqUserEmail = (user.email || '').trim().toLowerCase();
+
+    return Boolean(
+      (docCriador && (docCriador === reqUserId || docCriador === reqUserName || docCriador === reqUserUsername || docCriador === reqUserEmail)) ||
+      (docAutor && (docAutor === reqUserId || docAutor === reqUserName || docAutor === reqUserUsername || docAutor === reqUserEmail))
+    );
+  }, [user]);
+
+  const meusCount = useMemo(() => {
+    return documents.filter(isDocumentoCriadoPorMim).length;
+  }, [documents, isDocumentoCriadoPorMim]);
+
   const departments = useMemo(() => {
     const depts = new Set(documents.map((d) => d.departamento));
     return ['TODOS', ...Array.from(depts)];
@@ -45,6 +67,10 @@ export const DocumentsPage: React.FC = () => {
       result = result.filter((d) => favoritos.includes(d.id));
     } else if (filtroParam === 'recentes') {
       result = result.filter((d) => documentosRecentes.includes(d.id));
+    }
+
+    if (apenasMeus) {
+      result = result.filter(isDocumentoCriadoPorMim);
     }
 
     if (searchTerm) {
@@ -71,6 +97,8 @@ export const DocumentsPage: React.FC = () => {
     filtroParam,
     favoritos,
     documentosRecentes,
+    apenasMeus,
+    isDocumentoCriadoPorMim,
     searchTerm,
     selectedClassification,
     selectedDepartment,
@@ -156,7 +184,31 @@ export const DocumentsPage: React.FC = () => {
               className="w-full pl-9 pr-3 py-2 bg-[#111] border border-[var(--color-surface-border)] text-[11px] font-mono text-white placeholder:text-[#555] focus:outline-none focus:border-[var(--color-text-muted)] transition-colors"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              id="btn-filter-meus-documentos"
+              onClick={() => setApenasMeus(!apenasMeus)}
+              className={`flex items-center gap-2 px-3 py-2 text-[11px] font-mono uppercase tracking-wider border transition-all cursor-pointer select-none whitespace-nowrap ${
+                apenasMeus
+                  ? 'bg-amber-950/80 border-[var(--color-accent-amber)] text-[var(--color-accent-amber)] shadow-[0_0_12px_rgba(245,158,11,0.25)] font-bold'
+                  : 'bg-[#111] border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:text-white hover:border-[#555]'
+              }`}
+              title="Exibir apenas documentos criados pelo seu usuário"
+            >
+              <div className={`w-3.5 h-3.5 border flex items-center justify-center transition-colors ${
+                apenasMeus 
+                  ? 'border-[var(--color-accent-amber)] bg-[var(--color-accent-amber)] text-black' 
+                  : 'border-[#555] bg-black/40'
+              }`}>
+                {apenasMeus && <Check className="w-3 h-3 stroke-[3]" />}
+              </div>
+              <span className="flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>CRIADOS POR MIM {meusCount > 0 ? `(${meusCount})` : '(0)'}</span>
+              </span>
+            </button>
+
             <select
               value={selectedClassification}
               onChange={(e) =>
@@ -204,7 +256,7 @@ export const DocumentsPage: React.FC = () => {
                 <th className="px-4 py-3 font-normal w-40">Classificação</th>
                 <th className="px-4 py-3 font-normal w-48 hidden md:table-cell">Autor</th>
                 <th className="px-4 py-3 font-normal w-32 hidden lg:table-cell">Atualizado</th>
-                <th className="px-4 py-3 font-normal text-right w-32">Ação</th>
+                <th className="px-4 py-3 font-normal text-right w-44">Ação</th>
               </tr>
             </thead>
             <tbody>
@@ -217,7 +269,16 @@ export const DocumentsPage: React.FC = () => {
                   <td colSpan={7} className="px-4 py-16 text-center text-[var(--color-text-muted)]">
                     <div className="flex flex-col items-center justify-center">
                       <FileText className="w-8 h-8 mb-4 opacity-20" />
-                      <p className="text-[11px] font-mono uppercase tracking-widest">NENHUM REGISTRO CORRESPONDE À BUSCA</p>
+                      <p className="text-[11px] font-mono uppercase tracking-widest">
+                        {apenasMeus 
+                          ? 'VOCÊ AINDA NÃO CRIOU NENHUM DOCUMENTO NESTA CONTA'
+                          : 'NENHUM REGISTRO CORRESPONDE À BUSCA'}
+                      </p>
+                      {apenasMeus && (
+                        <p className="text-[10px] font-mono text-[#666] mt-1 uppercase">
+                          Clique em &quot;Novo Documento&quot; para registrar um documento de sua autoria.
+                        </p>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -226,7 +287,7 @@ export const DocumentsPage: React.FC = () => {
           </table>
         </div>
         <div className="bg-[var(--color-surface-panel)] p-3 border-t border-[var(--color-surface-border)] text-[9px] font-mono text-[var(--color-text-muted)] uppercase tracking-widest flex justify-between items-center">
-          <span className="text-red-500 font-bold">DEBUG: ALL={allDocuments.length}, FILTERED={filteredDocuments.length}, NIVEL={userNivel}</span>
+          <span>SISTEMA: ONLINE | TOTAL: {allDocuments.length}</span>
           <span>REGISTROS ENCONTRADOS: {filteredDocuments.length}</span>
           <span>NÍVEL_AUTORIZAÇÃO_OP: {userNivel}</span>
         </div>
